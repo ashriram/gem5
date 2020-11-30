@@ -45,6 +45,14 @@ OoO_queues(p->OoO_queues),
 vector_mem_queue_size(p->vector_mem_queue_size),
 vector_arith_queue_size(p->vector_arith_queue_size)
 {
+    // 1024 means that the register is not used ... for memory location we should define other number ???
+    for (uint64_t i=0; i<RenamedRegs; i++) {
+            rmt_mem.push_back(1024);
+        }
+    //PhysicalRegs refers to the number of real physical registers (not the renamed ones)
+    for (uint64_t i=0; i<PhysicalRegs; i++) {
+            frl_mem.push_back(i);
+        }
 }
 
 InstQueue::~InstQueue()
@@ -196,6 +204,63 @@ InstQueue::evaluate()
                 mask_ready && !Instruction->issued;
 
             if (srcs_ready) {
+                /* --------------------------------------------------------------------------------------------------------------
+                * NEW SUPPORT
+                *----------------------------------------------------------------------------------------------------------------
+                * In issue stage the physical registers are asigned only to the instruction that will use it. I that way we 
+                * control how the physical registers are assigned.
+                *----------------------------------------------------------------------------------------------------------------
+                */
+                bool wb_enable = !Instruction->insn.VectorToScalar();
+                uint64_t physical_reg=1024;
+
+                if(frl_empty() && wb_enable) {
+                DPRINTF(InstQueue,"Inst Queue can not Issue more instructions"
+                    " because there are no physical registers available \n");
+                return;
+                }
+
+                Instruction->dyn_insn->set_physical_src1(get_preg_rmt(src1));
+                Instruction->dyn_insn->set_physical_src2(get_preg_rmt(src2));
+                Instruction->dyn_insn->set_physical_src3(get_preg_rmt(src3));
+                Instruction->dyn_insn->set_physical_old_dst(get_preg_rmt(src3));
+                Instruction->dyn_insn->set_physical_mask(get_preg_rmt(mask));
+
+                vectorwrapper->vector_rob->set_rob_physical_old_dst(get_preg_rmt(src3), Instruction->dyn_insn->get_rob_entry());
+
+                vectorwrapper->printArithInst(Instruction->insn,Instruction->dyn_insn,0);
+
+                if (wb_enable)
+                {
+                /* Renamed registers are used as index to read/write the rmt memory*/
+                uint64_t renamed_dst = Instruction->dyn_insn->get_renamed_dst();
+                physical_reg = get_frl();
+                set_preg_rmt(renamed_dst , physical_reg);
+                DPRINTF(InstQueue,"Arith Queue setting rmt[%d] = %d \n",renamed_dst,physical_reg);
+                }
+
+                Instruction->dyn_insn->set_physical_dst(physical_reg);
+
+                //uint16_t get_physical_src1()  { return physical_src1; }
+                //void set_physical_src1(uint16_t val)  { physical_src1 = val; }
+                //uint16_t get_physical_src2() { return physical_src2; }
+                //void set_physical_src2(uint16_t val) { physical_src2  = val; }
+                //uint16_t get_physical_src3() { return physical_src3; }
+                //void set_physical_src3(uint16_t val) { physical_src3  = val; }
+                //uint16_t get_physical_dst() { return physical_dst; }
+                //void set_physical_dst(uint16_t val) { physical_dst  = val; }
+                //uint16_t get_physical_old_dst() { return physical_old_dst; }
+                //void set_physical_old_dst(uint16_t val) { physical_old_dst  = val; }
+                //uint16_t get_physical_mask() { return physical_mask; }
+                //void set_physical_mask(uint16_t val) { physical_mask  = val; }
+
+                //uint64_t get_preg_rmt(uint64_t idx);
+                //void set_preg_rmt(uint64_t idx , uint64_t val);
+                //bool frl_empty();
+                //uint64_t get_frl();
+                //void set_frl(uint64_t reg_idx);
+                // --------------------------------------------------------------------------------------------------------------
+
                 queue_slot = i;
 
                 pc = Instruction->insn.getPC();
@@ -245,7 +310,10 @@ InstQueue::evaluate()
         else
         {
             idle_count_by_dependency ++;
-            //DPRINTF(InstQueue,"Sources not ready\n");
+            DPRINTF(InstQueue,"Sources not ready\n");
+            uint64_t pc = Instruction->insn.getPC();
+            DPRINTF(InstQueue,"Arith inst %s with pc 0x%lx \n",
+            Instruction->insn.getName(),*(uint64_t*)&pc);
         }
     }
     // Stores are executed in order
@@ -263,6 +331,7 @@ InstQueue::evaluate()
         uint64_t pc = 0;
         bool isStore = 0;
         bool isLoad = 0;
+        uint64_t old_dst=0;
         uint64_t src3=0;
         uint64_t src2=0;
         uint8_t mop=0;
@@ -280,6 +349,7 @@ InstQueue::evaluate()
             Mem_Instruction = Memory_Queue[i];
             isLoad = Mem_Instruction->insn.isLoad();
             isStore = Mem_Instruction->insn.isStore();
+            old_dst = Mem_Instruction->dyn_insn->get_renamed_old_dst();
             src3 = Mem_Instruction->dyn_insn->get_renamed_src3();
             src2 = Mem_Instruction->dyn_insn->get_renamed_src2();
             mop = Mem_Instruction->insn.mop();
@@ -317,6 +387,40 @@ InstQueue::evaluate()
                 vectorwrapper->vector_reg_validbit->get_preg_valid_bit(src2):0;
 
             if (src_ready) {
+
+                /* --------------------------------------------------------------------------------------------------------------
+                * NEW SUPPORT
+                *--------------------------------------------------------------------------------------------------------------*/
+                uint64_t physical_reg = 1024;
+                
+                if(frl_empty() && isLoad) {
+                DPRINTF(InstQueue,"Mem Queue can not Issue more instructions"
+                    " because there are no physical registers available \n");
+                return;
+                }
+
+                //Mem_Instruction->dyn_insn->set_physical_src1(get_preg_rmt(src1));
+                Mem_Instruction->dyn_insn->set_physical_src2(get_preg_rmt(src2));
+                Mem_Instruction->dyn_insn->set_physical_src3(get_preg_rmt(src3));
+                Mem_Instruction->dyn_insn->set_physical_old_dst(get_preg_rmt(old_dst));
+                //Mem_Instruction->dyn_insn->set_physical_mask(get_preg_rmt(mask));
+
+                DPRINTF(InstQueue,"old_dst = %d , get_preg_rmt = %d  \n",old_dst,get_preg_rmt(old_dst));
+                vectorwrapper->vector_rob->set_rob_physical_old_dst(get_preg_rmt(old_dst), Mem_Instruction->dyn_insn->get_rob_entry());
+                vectorwrapper->printMemInst(Mem_Instruction->insn,Mem_Instruction->dyn_insn);
+
+                if (isLoad) {
+                    DPRINTF(InstQueue,"Mem Queue settimg rmt \n");
+                    /* Renamed registers are used as index to read/write the rmt memory*/
+                    uint64_t renamed_dst = Mem_Instruction->dyn_insn->get_renamed_dst();
+                    physical_reg = get_frl();
+                    set_preg_rmt(renamed_dst , physical_reg);
+                    DPRINTF(InstQueue,"Mem Queue setting rmt[%d] = %d \n",renamed_dst,physical_reg);
+                }
+
+                Mem_Instruction->dyn_insn->set_physical_dst(physical_reg);
+                // --------------------------------------------------------------------------------------------------------------
+
                 queue_slot = i;
                 pc = Mem_Instruction->insn.getPC();
                 DPRINTF(InstQueue,"Issuing mem inst %s with pc 0x%lx from queue slot %d\n",
@@ -364,9 +468,60 @@ InstQueue::evaluate()
         }
         else
         {
-            //DPRINTF(InstQueue,"Sources not ready\n");
+            DPRINTF(InstQueue,"Sources not ready\n");
         }
     }
+}
+
+uint64_t
+InstQueue::get_preg_rmt(uint64_t idx)
+{
+    assert((idx < RenamedRegs) || (idx==1024));
+
+    if (idx==1024) {
+        return 1024;
+    } else {
+        return rmt_mem[idx];
+    }
+}
+
+void
+InstQueue::set_preg_rmt(uint64_t idx , uint64_t val)
+{
+    assert(val<PhysicalRegs);
+    assert( (idx < RenamedRegs) || (idx==1024));
+
+    rmt_mem[idx] = val;
+}
+
+bool 
+InstQueue::frl_empty()
+{
+    return (frl_mem.size()==0);
+}
+
+uint64_t 
+InstQueue::get_frl()
+{
+    if (frl_mem.size()>0) {
+        uint64_t aux;
+        aux = frl_mem.front();
+        frl_mem.pop_front();
+        return aux;
+        }
+    else
+    {
+        DPRINTF(VectorRename, "FRL Empty\n");
+        return 0;
+    }
+}
+
+void 
+InstQueue::set_frl(uint64_t reg_idx)
+{
+    assert(frl_mem.size()<PhysicalRegs-1);
+    frl_mem.push_back(reg_idx);
+    DPRINTF(InstQueue,"Issue Queue FRL Size %d\n",frl_mem.size());
 }
 
 InstQueue *

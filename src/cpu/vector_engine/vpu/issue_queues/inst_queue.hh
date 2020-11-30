@@ -90,6 +90,14 @@ public:
     void regStats() override;
     void evaluate() override;
 
+    // Functions for the new register allocation
+    uint64_t get_preg_rmt(uint64_t idx);
+    void set_preg_rmt(uint64_t idx , uint64_t val);
+    bool frl_empty();
+    uint64_t get_frl();
+    void set_frl(uint64_t reg_idx);
+
+
 protected:
     bool occupied;
 
@@ -108,6 +116,12 @@ public:
     Stats::Scalar idle_count_by_dependency;
     Stats::Scalar VectorMemQueueSlotsUsed;
     Stats::Scalar VectorArithQueueSlotsUsed;
+private:
+    std::deque<uint64_t> rmt_mem;
+    std::deque<uint64_t> frl_mem;
+    //NOTA: agregar a la configuración para que sea dinamico.
+    int RenamedRegs = 64;
+    int PhysicalRegs = 64;
 };
 
 #endif //__CPU_INST_QUEUE_HH__

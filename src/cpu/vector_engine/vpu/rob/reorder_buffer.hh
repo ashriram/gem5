@@ -48,11 +48,12 @@ class ReorderBuffer : public TickedObject
 public:
     class rob_entry {
         public:
-        rob_entry(uint16_t old_dst, bool valid_old_dst):
-        old_dst(old_dst),valid_old_dst(valid_old_dst),executed(0) {}
+        rob_entry(uint16_t renamed_old_dst, bool valid_old_dst):
+        physical_old_dst(1024),renamed_old_dst(renamed_old_dst),valid_old_dst(valid_old_dst),executed(0) {}
         ~rob_entry() {}
         //private:
-        uint16_t old_dst;
+        uint16_t physical_old_dst;
+        uint16_t renamed_old_dst;
         bool valid_old_dst;
         bool executed;
     };
@@ -68,7 +69,8 @@ public:
 
     bool rob_full();
     bool rob_empty();
-    uint32_t set_rob_entry(uint32_t old_dst, bool valid_old_dst);
+    uint32_t set_rob_entry(uint32_t renamed_old_dst, bool valid_old_dst);
+    void set_rob_physical_old_dst(uint32_t physical_old_dst, uint32_t idx);
     void set_rob_entry_executed(uint32_t idx);
 protected:
     bool occupied;

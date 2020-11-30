@@ -42,6 +42,7 @@
 #include "debug/VectorEngine.hh"
 #include "debug/VectorEngineInfo.hh"
 #include "debug/VectorInst.hh"
+#include "debug/InstQueue.hh"
 #include "sim/faults.hh"
 #include "sim/sim_object.hh"
 
@@ -150,7 +151,7 @@ VectorEngine::requestGrant(RiscvISA::VectorStaticInst *insn)
                                 (last_lmul == 2) ? vector_rename->frl_elements() >= 2 :
                                 (last_lmul == 4) ? vector_rename->frl_elements() >= 4 :
                                 (last_lmul == 8) ? vector_rename->frl_elements() >= 8 : 0;
-    DPRINTF(VectorInst,"rob_entry_available %d, queue_slots_available %d, enough_physical_regs %d\n",rob_entry_available,queue_slots_available,enough_physical_regs);
+    //DPRINTF(VectorInst,"rob_entry_available %d, queue_slots_available %d, enough_physical_regs %d\n",rob_entry_available,queue_slots_available,enough_physical_regs);
     return  enough_physical_regs && queue_slots_available
         && rob_entry_available;
     //return  !vector_rename->frl_empty() && queue_slots_available
@@ -270,15 +271,15 @@ VectorEngine::printArithInst(RiscvISA::VectorStaticInst& insn,VectorDynInst *vec
 
     if (insn.arith1Src()) {
         DPRINTF(VectorInst,"%s %s%d v%d %s           PC 0x%X\n",insn.getName(),reg_type,insn.vd(),insn.vs2(),masked,*(uint64_t*)&pc );
-        DPRINTF(VectorRename,"%s %s%d v%d %s  old_dst v%d\n",insn.getName(),reg_type,PDst,Pvs2,mask_ren.str(),POldDst);
+        DPRINTF(VectorRename,"renamed inst: %s %s%d v%d %s  old_dst v%d\n",insn.getName(),reg_type,PDst,Pvs2,mask_ren.str(),POldDst);
     }
     else if (insn.arith2Srcs()) {
         DPRINTF(VectorInst,"%s %s%d v%d %s%d %s       PC 0x%X\n",insn.getName(),reg_type,insn.vd(),insn.vs2(),scr1_type,insn.vs1(),masked,*(uint64_t*)&pc );
-        DPRINTF(VectorRename,"%s %s%d v%d %s%d %s  old_dst v%d\n",insn.getName(),reg_type,PDst,Pvs2,scr1_type,Pvs1,mask_ren.str(),POldDst);
+        DPRINTF(VectorRename,"renamed inst: %s %s%d v%d %s%d %s  old_dst v%d\n",insn.getName(),reg_type,PDst,Pvs2,scr1_type,Pvs1,mask_ren.str(),POldDst);
     }
     else if (insn.arith3Srcs()) {
         DPRINTF(VectorInst,"%s %s%d v%d %s%d %s       PC 0x%X\n",insn.getName(),reg_type,insn.vd(),insn.vs2(),scr1_type,insn.vs1(),masked,*(uint64_t*)&pc );
-        DPRINTF(VectorRename,"%s %s%d v%d %s%d v%d %s old_dst v%d\n",insn.getName(),reg_type,PDst,Pvs2,scr1_type,Pvs1,POldDst,mask_ren.str(),POldDst);
+        DPRINTF(VectorRename,"renamed inst: %s %s%d v%d %s%d v%d %s old_dst v%d\n",insn.getName(),reg_type,PDst,Pvs2,scr1_type,Pvs1,POldDst,mask_ren.str(),POldDst);
     } else {
         panic("Invalid Vector Instruction insn=%#h\n", insn.machInst);
     }
@@ -429,6 +430,7 @@ VectorEngine::dispatch(RiscvISA::VectorStaticInst& insn, ExecContextPtr& xc,
         vector_inst_queue->Memory_Queue.push_back(
             new InstQueue::QueueEntry(insn,vector_dyn_insn,xc,
                 NULL,src1,src2,last_vtype,last_vl));
+        DPRINTF(InstQueue,"Mem Queue Size %d\n",vector_inst_queue->Memory_Queue.size());
         printMemInst(insn,vector_dyn_insn);
     }
     else if (insn.isVectorInstArith()) {
@@ -447,6 +449,7 @@ VectorEngine::dispatch(RiscvISA::VectorStaticInst& insn, ExecContextPtr& xc,
                 new InstQueue::QueueEntry(insn,vector_dyn_insn,xc,
                 dependencie_callback,src1,src2,last_vtype,last_vl));
         }
+        DPRINTF(InstQueue,"Arith Queue Size %d\n",vector_inst_queue->Instruction_Queue.size());
         printArithInst(insn,vector_dyn_insn,src1);
     } else {
         panic("Invalid Vector Instruction, insn=%X\n", insn.machInst);

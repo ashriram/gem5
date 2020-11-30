@@ -59,7 +59,7 @@ ReorderBuffer::~ReorderBuffer()
 void
 ReorderBuffer::startTicking(VectorEngine& vector_wrapper)
 {
-    DPRINTF(ReorderBuffer,"ReorderBuffer StartTicking \n");
+    DPRINTF(ReorderBuffer,"ReorderBuffer StartTicking\n");
     this->vectorwrapper = &vector_wrapper;
     start();
 }
@@ -67,7 +67,7 @@ ReorderBuffer::startTicking(VectorEngine& vector_wrapper)
 void
 ReorderBuffer::stopTicking()
 {
-    DPRINTF(ReorderBuffer,"ReorderBuffer StopTicking \n");
+    DPRINTF(ReorderBuffer,"ReorderBuffer StopTicking\n");
     stop();
 }
 
@@ -102,11 +102,15 @@ ReorderBuffer::evaluate()
 
     if (rob[head]->executed)
     {
-        DPRINTF(ReorderBuffer,"Commiting ROB entry %d \n",head);
+        DPRINTF(ReorderBuffer,"Commiting ROB entry %d\n",head);
         if (rob[head]->valid_old_dst)
         {
-        DPRINTF(ReorderBuffer,"Freeing up old_dst %d \n",rob[head]->old_dst);
-        vectorwrapper->vector_rename->set_frl(rob[head]->old_dst);
+            DPRINTF(ReorderBuffer,"Freeing up renamed old_dst %d\n",rob[head]->renamed_old_dst);
+            vectorwrapper->vector_rename->set_frl(rob[head]->renamed_old_dst);
+            DPRINTF(ReorderBuffer,"Freeing up physical old_dst %d\n",rob[head]->physical_old_dst);
+            if(rob[head]->physical_old_dst != 1024) {
+                vectorwrapper->vector_inst_queue->set_frl(rob[head]->physical_old_dst);
+            }
         }
         if (head == ROB_Size-1) {
             head=0;
@@ -130,19 +134,20 @@ ReorderBuffer::rob_empty()
 }
 
 uint32_t
-ReorderBuffer::set_rob_entry(uint32_t old_dst, bool valid_old_dst)
+ReorderBuffer::set_rob_entry(uint32_t renamed_old_dst, bool valid_old_dst)
 {
     assert(valid_elements < ROB_Size);
 
-    rob[tail]->old_dst = old_dst;
+    rob[tail]->renamed_old_dst = renamed_old_dst;
+    rob[tail]->physical_old_dst = 1024;
     rob[tail]->valid_old_dst = valid_old_dst;
     rob[tail]->executed = 0;
     uint32_t return_tail = tail;
     if (valid_old_dst) {
-        DPRINTF(ReorderBuffer,"Setting the ROB entry %d  with an old dst %d \n"
-            ,tail,old_dst);
+        DPRINTF(ReorderBuffer,"Setting the ROB entry %d  with an old dst %d\n"
+            ,tail,renamed_old_dst);
     } else {
-        DPRINTF(ReorderBuffer,"Setting the ROB entry %d without old dst %d \n"
+        DPRINTF(ReorderBuffer,"Setting the ROB entry %d without old dst %d\n"
             ,tail);
     }
 
@@ -158,10 +163,21 @@ ReorderBuffer::set_rob_entry(uint32_t old_dst, bool valid_old_dst)
 }
 
 void
+ReorderBuffer::set_rob_physical_old_dst(uint32_t physical_old_dst, uint32_t idx)
+{
+    assert(valid_elements < ROB_Size);
+
+    rob[idx]->physical_old_dst = physical_old_dst;
+
+    DPRINTF(ReorderBuffer,"Setting the ROB entry %d  with a physical old dst %d\n",
+    idx,physical_old_dst);
+}
+
+void
 ReorderBuffer::set_rob_entry_executed(uint32_t idx)
 {
     assert(idx < ROB_Size);
-    DPRINTF(ReorderBuffer,"Setting the ROB entry %d as executed \n",idx);
+    DPRINTF(ReorderBuffer,"Setting the ROB entry %d as executed\n",idx);
     rob[idx]->executed = 1;
 }
 

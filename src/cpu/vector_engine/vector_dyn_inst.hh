@@ -43,6 +43,8 @@ public:
 VectorDynInst() : vinst(NULL),
   renamed_src1(1024),renamed_src2(1024),renamed_src3(1024),
   renamed_dst(1024),renamed_old_dst(1024),renamed_mask(1024),
+  physical_src1(1024),physical_src2(1024),physical_src3(1024),
+  physical_dst(1024),physical_old_dst(1024),physical_mask(1024),
   rob_entry(1024){
   }
 ~VectorDynInst() {}
@@ -66,6 +68,25 @@ VectorDynInst() : vinst(NULL),
   uint16_t get_renamed_mask() { return renamed_mask; }
   void set_renamed_mask(uint16_t val) { renamed_mask  = val; }
 
+/* Physical registers */
+  uint16_t get_physical_src1()  { return physical_src1; }
+  void set_physical_src1(uint16_t val)  { physical_src1 = val; }
+
+  uint16_t get_physical_src2() { return physical_src2; }
+  void set_physical_src2(uint16_t val) { physical_src2  = val; }
+
+  uint16_t get_physical_src3() { return physical_src3; }
+  void set_physical_src3(uint16_t val) { physical_src3  = val; }
+
+  uint16_t get_physical_dst() { return physical_dst; }
+  void set_physical_dst(uint16_t val) { physical_dst  = val; }
+
+  uint16_t get_physical_old_dst() { return physical_old_dst; }
+  void set_physical_old_dst(uint16_t val) { physical_old_dst  = val; }
+
+  uint16_t get_physical_mask() { return physical_mask; }
+  void set_physical_mask(uint16_t val) { physical_mask  = val; }
+
 /* rob_entry */
   uint16_t get_rob_entry() { return rob_entry; }
   void set_rob_entry(uint16_t val) { rob_entry  = val; }
@@ -88,6 +109,12 @@ private:
   uint16_t  renamed_dst;
   uint16_t  renamed_old_dst;
   uint16_t  renamed_mask;
+  uint16_t  physical_src1;
+  uint16_t  physical_src2;
+  uint16_t  physical_src3;
+  uint16_t  physical_dst;
+  uint16_t  physical_old_dst;
+  uint16_t  physical_mask;
   uint16_t  rob_entry;
 };
 
