@@ -77,6 +77,7 @@ public:
         if (frl_mem.size()>0) {
             uint64_t aux;
             aux = frl_mem.front();
+            DPRINTF(VectorRename, "get_frl register %d\n",aux);
             frl_mem.pop_front();
             return aux;
             }
@@ -90,7 +91,20 @@ public:
     void set_frl(uint64_t reg_idx)
     {
         assert(frl_mem.size()<PhysicalRegs-1);
+        
+        for (int i=0; i<frl_mem.size() ; i++)
+        {
+            assert(frl_mem[i]!= reg_idx);
+        }
+        DPRINTF(VectorRename, "set_frl register %d\n",reg_idx);
         frl_mem.push_back(reg_idx);
+
+        std::stringstream texto;
+        for (int i=0; i<frl_mem.size() ; i++)
+        {
+            texto << frl_mem[i] << " ,";
+        }
+        DPRINTF(VectorRename,"rename frl_mem :  %s \n",texto.str());
     }
 
     uint64_t get_preg_rat(uint64_t idx)
@@ -101,23 +115,18 @@ public:
     void set_preg_rat(uint64_t idx , uint64_t val)
     {
         rat_mem[idx] = val;
+        print_rat();
     }
 
     void print_rat()
     {
-        DPRINTF(VectorRename, "REGISTER ALIAS TABLE\n");
-        DPRINTF(VectorRename, "%lu %lu %lu %lu %lu %lu %lu %lu\n"
-            ,rat_mem[0],rat_mem[1],rat_mem[2],rat_mem[3],
-            rat_mem[4],rat_mem[5],rat_mem[6],rat_mem[7]);
-        DPRINTF(VectorRename, "%lu %lu %lu %lu %lu %lu %lu %lu\n"
-            ,rat_mem[8],rat_mem[9],rat_mem[10],rat_mem[11],
-            rat_mem[12],rat_mem[13],rat_mem[14],rat_mem[15]);
-        DPRINTF(VectorRename, "%lu %lu %lu %lu %lu %lu %lu %lu\n"
-            ,rat_mem[16],rat_mem[17],rat_mem[18],rat_mem[19],
-            rat_mem[20],rat_mem[21],rat_mem[22],rat_mem[23]);
-        DPRINTF(VectorRename, "%lu %lu %lu %lu %lu %lu %lu %lu\n"
-            ,rat_mem[24],rat_mem[25],rat_mem[26],rat_mem[27],
-            rat_mem[28],rat_mem[29],rat_mem[30],rat_mem[31]);
+        std::stringstream texto;
+        for (int i=0; i<32 ; i++)
+        {
+            texto << rat_mem[i] << "  ";
+        }
+        DPRINTF(VectorRename,"rename rat :  %s \n",texto.str());
+
     }
 };
 

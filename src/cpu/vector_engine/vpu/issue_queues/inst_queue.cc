@@ -35,6 +35,9 @@
 #include <cstring>
 #include <iostream>
 #include <queue>
+#include <string>
+#include <sstream>
+#include <vector>
 
 #include "debug/InstQueue.hh"
 #include "debug/VectorValidBit.hh"
@@ -212,7 +215,7 @@ InstQueue::evaluate()
                 *----------------------------------------------------------------------------------------------------------------
                 */
                 bool wb_enable = !Instruction->insn.VectorToScalar();
-                uint64_t physical_reg=1024;
+                uint64_t renamed_dst=1024;
 
                 if(frl_empty() && wb_enable) {
                 DPRINTF(InstQueue,"Inst Queue can not Issue more instructions"
@@ -226,20 +229,23 @@ InstQueue::evaluate()
                 Instruction->dyn_insn->set_physical_old_dst(get_preg_rmt(src3));
                 Instruction->dyn_insn->set_physical_mask(get_preg_rmt(mask));
 
-                vectorwrapper->vector_rob->set_rob_physical_old_dst(get_preg_rmt(src3), Instruction->dyn_insn->get_rob_entry());
+                //vectorwrapper->vector_rob->set_rob_physical_old_dst(get_preg_rmt(src3), Instruction->dyn_insn->get_rob_entry());
 
-                vectorwrapper->printArithInst(Instruction->insn,Instruction->dyn_insn,0);
-
+                
+                //DPRINTF(InstQueue,"src1 %d ,src2 %d ,src3 %d\n",src1,src2,src3);
+                //DPRINTF(InstQueue,"src1 %d ,src2 %d ,src3 %d\n",get_preg_rmt(src1),get_preg_rmt(src2),get_preg_rmt(src3));
                 if (wb_enable)
                 {
                 /* Renamed registers are used as index to read/write the rmt memory*/
-                uint64_t renamed_dst = Instruction->dyn_insn->get_renamed_dst();
-                physical_reg = get_frl();
-                set_preg_rmt(renamed_dst , physical_reg);
-                DPRINTF(InstQueue,"Arith Queue setting rmt[%d] = %d \n",renamed_dst,physical_reg);
+                renamed_dst = Instruction->dyn_insn->get_renamed_dst();
+                //physical_reg = get_frl();
+                set_preg_rmt(renamed_dst , renamed_dst);
+                DPRINTF(InstQueue,"Arith Queue setting rmt[%d] = %d \n",renamed_dst,renamed_dst);
                 }
 
-                Instruction->dyn_insn->set_physical_dst(physical_reg);
+                Instruction->dyn_insn->set_physical_dst(get_preg_rmt(renamed_dst));
+
+                vectorwrapper->printArithInst(Instruction->insn,Instruction->dyn_insn,0);
 
                 //uint16_t get_physical_src1()  { return physical_src1; }
                 //void set_physical_src1(uint16_t val)  { physical_src1 = val; }
@@ -391,7 +397,7 @@ InstQueue::evaluate()
                 /* --------------------------------------------------------------------------------------------------------------
                 * NEW SUPPORT
                 *--------------------------------------------------------------------------------------------------------------*/
-                uint64_t physical_reg = 1024;
+                uint64_t renamed_dst = 1024;
                 
                 if(frl_empty() && isLoad) {
                 DPRINTF(InstQueue,"Mem Queue can not Issue more instructions"
@@ -405,20 +411,17 @@ InstQueue::evaluate()
                 Mem_Instruction->dyn_insn->set_physical_old_dst(get_preg_rmt(old_dst));
                 //Mem_Instruction->dyn_insn->set_physical_mask(get_preg_rmt(mask));
 
-                DPRINTF(InstQueue,"old_dst = %d , get_preg_rmt = %d  \n",old_dst,get_preg_rmt(old_dst));
-                vectorwrapper->vector_rob->set_rob_physical_old_dst(get_preg_rmt(old_dst), Mem_Instruction->dyn_insn->get_rob_entry());
-                vectorwrapper->printMemInst(Mem_Instruction->insn,Mem_Instruction->dyn_insn);
-
                 if (isLoad) {
-                    DPRINTF(InstQueue,"Mem Queue settimg rmt \n");
+                //    DPRINTF(InstQueue,"Mem Queue settimg rmt \n");
                     /* Renamed registers are used as index to read/write the rmt memory*/
-                    uint64_t renamed_dst = Mem_Instruction->dyn_insn->get_renamed_dst();
-                    physical_reg = get_frl();
-                    set_preg_rmt(renamed_dst , physical_reg);
-                    DPRINTF(InstQueue,"Mem Queue setting rmt[%d] = %d \n",renamed_dst,physical_reg);
+                    renamed_dst = Mem_Instruction->dyn_insn->get_renamed_dst();
+                //    physical_reg = get_frl();
+                    set_preg_rmt(renamed_dst , renamed_dst);
+                    DPRINTF(InstQueue,"Mem Queue setting rmt[%d] = %d \n",renamed_dst,renamed_dst);
                 }
 
-                Mem_Instruction->dyn_insn->set_physical_dst(physical_reg);
+                Mem_Instruction->dyn_insn->set_physical_dst(get_preg_rmt(renamed_dst));
+                vectorwrapper->printMemInst(Mem_Instruction->insn,Mem_Instruction->dyn_insn);
                 // --------------------------------------------------------------------------------------------------------------
 
                 queue_slot = i;
@@ -492,6 +495,14 @@ InstQueue::set_preg_rmt(uint64_t idx , uint64_t val)
     assert( (idx < RenamedRegs) || (idx==1024));
 
     rmt_mem[idx] = val;
+    DPRINTF(InstQueue,"rmt_mem [%d] = %d\n",idx,val);
+
+    std::stringstream texto;
+    for (int i=0; i<rmt_mem.size() ; i++)
+    {
+        texto << rmt_mem[i] << " ,";
+    }
+    DPRINTF(InstQueue,"physical rmt_mem %s \n",texto.str());
 }
 
 bool 
@@ -520,8 +531,22 @@ void
 InstQueue::set_frl(uint64_t reg_idx)
 {
     assert(frl_mem.size()<PhysicalRegs-1);
+    // Repeated free register is not allowed
+    for (int i=0; i<frl_mem.size() ; i++)
+    {
+        assert(frl_mem[i]!= reg_idx);
+    }
+
     frl_mem.push_back(reg_idx);
-    DPRINTF(InstQueue,"Issue Queue FRL Size %d\n",frl_mem.size());
+    DPRINTF(InstQueue,"Pushing physical reg %d to the frl\n",reg_idx);
+
+    std::stringstream texto;
+    for (int i=0; i<frl_mem.size() ; i++)
+    {
+        texto << frl_mem[i] << " ,";
+    }
+    DPRINTF(InstQueue,"physical frl_mem %s \n",texto.str());
+
 }
 
 InstQueue *
