@@ -93,9 +93,9 @@ public:
     // Functions for the new register allocation
     uint64_t get_preg_rmt(uint64_t idx);
     void set_preg_rmt(uint64_t idx , uint64_t val);
-    bool frl_empty();
-    uint64_t get_frl();
-    void set_frl(uint64_t reg_idx);
+    bool physical_frl_empty();
+    uint64_t get_physical_reg_frl();
+    void set_physical_reg_frl(uint64_t reg_idx);
 
 
 protected:
@@ -117,11 +117,11 @@ public:
     Stats::Scalar VectorMemQueueSlotsUsed;
     Stats::Scalar VectorArithQueueSlotsUsed;
 private:
-    std::deque<uint64_t> rmt_mem;
-    std::deque<uint64_t> frl_mem;
+    std::deque<uint64_t> physical_rmt_mem;
+    std::deque<uint64_t> physical_frl_mem;
     //NOTA: agregar a la configuración para que sea dinamico.
     int RenamedRegs = 64;
-    int PhysicalRegs = 64;
+    int PhysicalRegs = 8;
 };
 
 #endif //__CPU_INST_QUEUE_HH__
