@@ -57,7 +57,7 @@ public:
 
 protected:
     bool occupied;
-    const uint64_t PhysicalRegs;
+    const uint64_t RenamedRegs;
 
     class validbit_queue {
           public:

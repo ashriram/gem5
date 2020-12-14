@@ -48,14 +48,6 @@ OoO_queues(p->OoO_queues),
 vector_mem_queue_size(p->vector_mem_queue_size),
 vector_arith_queue_size(p->vector_arith_queue_size)
 {
-    // 1024 means that the register is not used ... for memory location we should define other number ???
-    for (uint64_t i=0; i<RenamedRegs; i++) {
-            physical_rmt_mem.push_back(1024);
-        }
-    //PhysicalRegs refers to the number of real physical registers (not the renamed ones)
-    for (uint64_t i=0; i<PhysicalRegs; i++) {
-            physical_frl_mem.push_back(i);
-        }
 }
 
 InstQueue::~InstQueue()
@@ -137,12 +129,14 @@ InstQueue::evaluate()
         uint64_t src1=0;
         uint64_t src2=0;
         uint64_t src3=0;
+        uint64_t old_dst=0;
         uint64_t mask=0;
 
         bool masked_op=0;
         bool vx_op=0;
         bool vf_op=0;
         bool vi_op=0;
+        bool scalar_op=0;
         bool mask_ready=0;
         bool src1_ready=0;
         bool src2_ready=0;
@@ -151,8 +145,8 @@ InstQueue::evaluate()
         QueueEntry * Instruction = Instruction_Queue.front();
         uint64_t queue_slot = 0;
 
-        //int queue_size = (OoO_queues) ? Instruction_Queue.size() : 1;
-        int queue_size = Instruction_Queue.size();
+        int queue_size = (OoO_queues) ? Instruction_Queue.size() : 1;
+        //int queue_size = Instruction_Queue.size();
 
         for (int i=0 ; i< queue_size ; i++)
         {
@@ -161,6 +155,7 @@ InstQueue::evaluate()
             src1 = Instruction->dyn_insn->get_renamed_src1();
             src2 = Instruction->dyn_insn->get_renamed_src2();
             src3 = Instruction->dyn_insn->get_renamed_old_dst();
+            old_dst = Instruction->dyn_insn->get_renamed_old_dst();
             mask = Instruction->dyn_insn->get_renamed_mask();
 
             masked_op = (Instruction->insn.vm()==0);
@@ -171,6 +166,7 @@ InstQueue::evaluate()
             vx_op = (Instruction->insn.func3()==4) || (Instruction->insn.func3()==6);
             vf_op = (Instruction->insn.func3()==5);
             vi_op = (Instruction->insn.func3()==3);
+            scalar_op = vx_op || vf_op || vi_op;
 
             if (masked_op) {
                 mask_ready = vectorwrapper->vector_reg_validbit->
@@ -180,7 +176,7 @@ InstQueue::evaluate()
             }
 
             if ((Instruction->insn.arith2Srcs() ||
-                Instruction->insn.arith3Srcs()) && !( vx_op || vf_op || vi_op)) {
+                Instruction->insn.arith3Srcs()) && !scalar_op) {
                 src1_ready = vectorwrapper->vector_reg_validbit->
                     get_preg_valid_bit(src1);
             }
@@ -218,23 +214,37 @@ InstQueue::evaluate()
                 bool wb_enable = !Instruction->insn.VectorToScalar();
                 uint64_t renamed_dst=1024;
                 uint64_t physical_reg = 1024;
-                if(physical_frl_empty() && wb_enable) {
+                if(vectorwrapper->vector_phy_registers->physical_frl_empty() && wb_enable) {
                 DPRINTF(InstQueue,"Inst Queue can not Issue more instructions"
                     " because there are no physical registers available \n");
                 return;
+                }
+
+                /* Old dst is subtracted only when the instruction is executed,
+                 * because in this moment the rmt table is updated, in order to compare if the 
+                 * result after subtracting is equal to zero, then push to the frl a physical reg
+                 */
+                if (wb_enable)
+                {
+                    vectorwrapper->vector_phy_registers->set_preg_comm_counter(old_dst,-1);
+                    /* If the old destination count is equal to zero, then we can push the old dst to the physical FRL*/
+                    if(vectorwrapper->vector_phy_registers->get_preg_comm_counter(old_dst) == 0) {
+                        vectorwrapper->vector_phy_registers->set_physical_reg_frl(vectorwrapper->vector_phy_registers->get_preg_rmt(old_dst));
+                    }
                 }
 
                 // CADA get_preg_rmt TAMBIEN DEBERIA TENER UN VALID, ASI POR EJEMPLO PODEMOS HACER ISSUE DE LAS QUE YA ESTAN FISICAMENTE
                 // AL HACER DE TODAS, DESPUES ADELANTE SE CHECA DEPENDIENDO LA ISNTRUCCION SOO LOS NECESARIOS.
 
                 // IMPORTANTE : PARA LIBERAR RECURSO .. PRIMERO CHECAR LSO VIEJOS PREMATUROS .... ESOS PUES SE LIBERA EL OLD DST ....
-                Instruction->dyn_insn->set_physical_src1(get_preg_rmt(src1));
-                Instruction->dyn_insn->set_physical_src2(get_preg_rmt(src2));
-                Instruction->dyn_insn->set_physical_src3(get_preg_rmt(src3));
-                Instruction->dyn_insn->set_physical_old_dst(get_preg_rmt(src3));
-                Instruction->dyn_insn->set_physical_mask(get_preg_rmt(mask));
+                Instruction->dyn_insn->set_physical_src1(vectorwrapper->vector_phy_registers->get_preg_rmt(src1));
+                Instruction->dyn_insn->set_physical_src2(vectorwrapper->vector_phy_registers->get_preg_rmt(src2));
+                Instruction->dyn_insn->set_physical_src3(vectorwrapper->vector_phy_registers->get_preg_rmt(src3));
+                Instruction->dyn_insn->set_physical_old_dst(vectorwrapper->vector_phy_registers->get_preg_rmt(src3));
+                Instruction->dyn_insn->set_physical_mask(vectorwrapper->vector_phy_registers->get_preg_rmt(mask));
 
-                //vectorwrapper->vector_rob->set_rob_physical_old_dst(get_preg_rmt(src3), Instruction->dyn_insn->get_rob_entry());
+                // Por ahora ya no se ocupa el rob para liberar ... commit counters 
+                //vectorwrapper->vector_rob->set_rob_physical_old_dst(vectorwrapper->vector_phy_registers->get_preg_rmt(src3), Instruction->dyn_insn->get_rob_entry());
 
                 //DPRINTF(InstQueue,"src1 %d ,src2 %d ,src3 %d\n",src1,src2,src3);
                 //DPRINTF(InstQueue,"src1 %d ,src2 %d ,src3 %d\n",get_preg_rmt(src1),get_preg_rmt(src2),get_preg_rmt(src3));
@@ -242,33 +252,14 @@ InstQueue::evaluate()
                 {
                 /* Renamed registers are used as index to read/write the rmt memory*/
                 renamed_dst = Instruction->dyn_insn->get_renamed_dst();
-                physical_reg = get_physical_reg_frl();
-                set_preg_rmt(renamed_dst , physical_reg);
+                physical_reg = vectorwrapper->vector_phy_registers->get_physical_reg_frl();
+                vectorwrapper->vector_phy_registers->set_preg_rmt(renamed_dst , physical_reg);
                 DPRINTF(InstQueue,"Arith Queue setting rmt[%d] = %d \n",renamed_dst,physical_reg);
                 }
 
                 Instruction->dyn_insn->set_physical_dst(physical_reg);
-
-                vectorwrapper->printArithInst(Instruction->insn,Instruction->dyn_insn,0);
-
-                //uint16_t get_physical_src1()  { return physical_src1; }
-                //void set_physical_src1(uint16_t val)  { physical_src1 = val; }
-                //uint16_t get_physical_src2() { return physical_src2; }
-                //void set_physical_src2(uint16_t val) { physical_src2  = val; }
-                //uint16_t get_physical_src3() { return physical_src3; }
-                //void set_physical_src3(uint16_t val) { physical_src3  = val; }
-                //uint16_t get_physical_dst() { return physical_dst; }
-                //void set_physical_dst(uint16_t val) { physical_dst  = val; }
-                //uint16_t get_physical_old_dst() { return physical_old_dst; }
-                //void set_physical_old_dst(uint16_t val) { physical_old_dst  = val; }
-                //uint16_t get_physical_mask() { return physical_mask; }
-                //void set_physical_mask(uint16_t val) { physical_mask  = val; }
-
-                //uint64_t get_preg_rmt(uint64_t idx);
-                //void set_preg_rmt(uint64_t idx , uint64_t val);
-                //bool physical_frl_empty();
-                //uint64_t get_physical_reg_frl();
-                //void set_physical_reg_frl(uint64_t reg_idx);
+                //vectorwrapper->printArithInst(Instruction->insn,Instruction->dyn_insn,0);
+                vectorwrapper->vector_phy_registers->printArithPhyInst(Instruction->insn,Instruction->dyn_insn);
                 // --------------------------------------------------------------------------------------------------------------
 
                 queue_slot = i;
@@ -286,9 +277,9 @@ InstQueue::evaluate()
             Instruction_Queue.erase(Instruction_Queue.begin()+queue_slot);
             vectorwrapper->issue(Instruction->insn,Instruction->dyn_insn,
                 Instruction->xc,Instruction->src1,Instruction->src2,
-                 Instruction->rename_vtype,Instruction->rename_vl,
-                [Instruction,this](Fault f) {
-
+                Instruction->rename_vtype,Instruction->rename_vl,
+                [Instruction,masked_op,scalar_op,src1,src2,src3,mask,this]
+                (Fault f) {
                 // Setting the Valid Bit
                 bool wb_enable = !Instruction->insn.VectorToScalar();
                 uint64_t renamed_dst = Instruction->dyn_insn->get_renamed_dst();
@@ -307,11 +298,49 @@ InstQueue::evaluate()
                 DPRINTF(InstQueue,"Arith Queue Size %d\n",
                     Instruction_Queue.size());
                 
+                /* Commit counters used to keep track the last use of the physical registers
+                 * This logic will help to swap registers between memory and the physical
+                 * register bank.
+                 */
+                if (masked_op) {
+                    /* Decrease -1 mask */
+                    vectorwrapper->vector_phy_registers->set_preg_comm_counter(mask,-1);
+                    if(vectorwrapper->vector_phy_registers->get_preg_comm_counter(mask) == 0) {
+                        vectorwrapper->vector_phy_registers->set_physical_reg_frl(Instruction->dyn_insn->get_physical_mask());
+                    }
+                }
+                if ((Instruction->insn.arith2Srcs() ||
+                    Instruction->insn.arith3Srcs()) && !scalar_op) {
+                    /* Decrease -1 first source */
+                    vectorwrapper->vector_phy_registers->set_preg_comm_counter(src1,-1);
+                    if(vectorwrapper->vector_phy_registers->get_preg_comm_counter(src1) == 0) {
+                        vectorwrapper->vector_phy_registers->set_physical_reg_frl(Instruction->dyn_insn->get_physical_src1());
+                    }
+                }
+                if (Instruction->insn.arith1Src() ||
+                    Instruction->insn.arith2Srcs() ||
+                    Instruction->insn.arith3Srcs()){
+                    /* Decrease -1 second source */
+                    vectorwrapper->vector_phy_registers->set_preg_comm_counter(src2,-1);
+                    if(vectorwrapper->vector_phy_registers->get_preg_comm_counter(src2) == 0) {
+                        vectorwrapper->vector_phy_registers->set_physical_reg_frl(Instruction->dyn_insn->get_physical_src2());
+                    }
+                }
+                if (Instruction->insn.arith3Srcs()) {
+                    vectorwrapper->vector_phy_registers->set_preg_comm_counter(src3,-1);
+                    if(vectorwrapper->vector_phy_registers->get_preg_comm_counter(src3) == 0) {
+                        vectorwrapper->vector_phy_registers->set_physical_reg_frl(Instruction->dyn_insn->get_physical_src3());
+                    }
+                }
+                vectorwrapper->vector_phy_registers->print_commit_counters();
+
+                /* If the instruction writes to a scalar registers, then a callback
+                 * is executed to signal that the instruction has been executed.
+                 */
                 if (Instruction->insn.VectorToScalar()) {
                     Instruction->dependencie_callback();
                 }
 
-                //delete Instruction->xc;
                 delete Instruction->dyn_insn;
                 delete Instruction;
                 this->occupied = false;
@@ -351,8 +380,8 @@ InstQueue::evaluate()
 
         QueueEntry * Mem_Instruction = Memory_Queue.front();
         uint64_t queue_slot = 0;
-        //int queue_size = (OoO_queues) ? Memory_Queue.size() : 1;
-        int queue_size = Memory_Queue.size();
+        int queue_size = (OoO_queues) ? Memory_Queue.size() : 1;
+        //int queue_size = Memory_Queue.size();
 
         //int min = std::min(queue_size ,32);
         for (int i=0 ; i< queue_size ; i++)
@@ -406,29 +435,43 @@ InstQueue::evaluate()
                 uint64_t renamed_dst = 1024;
                 uint64_t physical_reg = 1024;
 
-                if(physical_frl_empty() && isLoad) {
+                if(vectorwrapper->vector_phy_registers->physical_frl_empty() && isLoad) {
                 DPRINTF(InstQueue,"Mem Queue can not Issue more instructions"
                     " because there are no physical registers available \n");
                 return;
                 }
 
-                //Mem_Instruction->dyn_insn->set_physical_src1(get_preg_rmt(src1));
-                Mem_Instruction->dyn_insn->set_physical_src2(get_preg_rmt(src2));
-                Mem_Instruction->dyn_insn->set_physical_src3(get_preg_rmt(src3));
-                Mem_Instruction->dyn_insn->set_physical_old_dst(get_preg_rmt(old_dst));
-                //Mem_Instruction->dyn_insn->set_physical_mask(get_preg_rmt(mask));
+                /* Old dst is subtracted only when the instruction is executed,
+                 * because in this moment the rmt table is updated, in order to compare if the 
+                 * result after subtracting is equal to zero, then push to the frl a physical reg
+                 */
+                if (isLoad) {
+                    vectorwrapper->vector_phy_registers->set_preg_comm_counter(old_dst,-1);
+                    /* If the old destination count is equal to zero, then we can push the old dst to the physical FRL*/
+                    if(vectorwrapper->vector_phy_registers->get_preg_comm_counter(old_dst) == 0) {
+                        vectorwrapper->vector_phy_registers->set_physical_reg_frl(vectorwrapper->vector_phy_registers->get_preg_rmt(old_dst));
+                    }
+                }
+
+                //Mem_Instruction->dyn_insn->set_physical_src1(vectorwrapper->vector_phy_registers->get_preg_rmt(src1));
+                Mem_Instruction->dyn_insn->set_physical_src2(vectorwrapper->vector_phy_registers->get_preg_rmt(src2));
+                Mem_Instruction->dyn_insn->set_physical_src3(vectorwrapper->vector_phy_registers->get_preg_rmt(src3));
+                Mem_Instruction->dyn_insn->set_physical_old_dst(vectorwrapper->vector_phy_registers->get_preg_rmt(old_dst));
+                //Mem_Instruction->dyn_insn->set_physical_mask(vectorwrapper->vector_phy_registers->get_preg_rmt(mask));
 
                 if (isLoad) {
-                //    DPRINTF(InstQueue,"Mem Queue settimg rmt \n");
+                    //Por ahora ya no se ocupa el ROB para alojar el physical old, commit counters
+                    //vectorwrapper->vector_rob->set_rob_physical_old_dst(vectorwrapper->vector_phy_registers->get_preg_rmt(src3), Mem_Instruction->dyn_insn->get_rob_entry());
                     /* Renamed registers are used as index to read/write the rmt memory*/
                     renamed_dst = Mem_Instruction->dyn_insn->get_renamed_dst();
-                    physical_reg = get_physical_reg_frl();
-                    set_preg_rmt(renamed_dst , physical_reg);
+                    physical_reg = vectorwrapper->vector_phy_registers->get_physical_reg_frl();
+                    vectorwrapper->vector_phy_registers->set_preg_rmt(renamed_dst , physical_reg);
                     DPRINTF(InstQueue,"Mem Queue setting rmt[%d] = %d \n",renamed_dst,physical_reg);
                 }
 
                 Mem_Instruction->dyn_insn->set_physical_dst(physical_reg);
-                vectorwrapper->printMemInst(Mem_Instruction->insn,Mem_Instruction->dyn_insn);
+                //vectorwrapper->printMemInst(Mem_Instruction->insn,Mem_Instruction->dyn_insn);
+                vectorwrapper->vector_phy_registers->printMemPhyInst(Mem_Instruction->insn,Mem_Instruction->dyn_insn);
                 // --------------------------------------------------------------------------------------------------------------
 
                 queue_slot = i;
@@ -448,7 +491,8 @@ InstQueue::evaluate()
                 Mem_Instruction->dyn_insn,Mem_Instruction->xc,
                 Mem_Instruction->src1,Mem_Instruction->src2,
                 Mem_Instruction->rename_vtype,Mem_Instruction->rename_vl,
-                [Mem_Instruction,this](Fault f) {
+                [Mem_Instruction,isLoad,isStore,indexed_op,src2,src3,this]
+                (Fault f) {
 
                 bool wb_enable = !Mem_Instruction->insn.isStore();
                 uint64_t renamed_dst = Mem_Instruction->dyn_insn->get_renamed_dst();
@@ -468,8 +512,36 @@ InstQueue::evaluate()
                 DPRINTF(InstQueue,"Executed Mem_Instruction %s\n",
                     Mem_Instruction->insn.getName());
                 DPRINTF(InstQueue,"Mem Queue Size %d\n",Memory_Queue.size());
-                //Memory_Queue.pop_front();
-                //delete Mem_Instruction->xc;
+
+                /* Commit counters used to keep track the last use of the physical registers
+                 * This logic will help to swap registers between memory and the physical
+                 * register bank.
+                 */
+                if (isLoad) {
+                    /**Indexed operation uses the second source to hold the index values*/
+                    if(indexed_op) {
+                        /* Decrease -1 second source */
+                        vectorwrapper->vector_phy_registers->set_preg_comm_counter(src2,-1);
+                        if(vectorwrapper->vector_phy_registers->get_preg_comm_counter(src2) == 0) {
+                            vectorwrapper->vector_phy_registers->set_physical_reg_frl(Mem_Instruction->dyn_insn->get_physical_src2());
+                        }
+                    }
+                } else if (isStore) {
+                    /* Decrease -1 third source */
+                    vectorwrapper->vector_phy_registers->set_preg_comm_counter(src3,-1);
+                    if(vectorwrapper->vector_phy_registers->get_preg_comm_counter(src3) == 0) {
+                        vectorwrapper->vector_phy_registers->set_physical_reg_frl(Mem_Instruction->dyn_insn->get_physical_src3());
+                    }
+                    /**Indexed operation uses the second source to hold the index values*/
+                    if(indexed_op) {
+                        /* Decrease -1 second source */
+                        vectorwrapper->vector_phy_registers->set_preg_comm_counter(src2,-1);
+                        if(vectorwrapper->vector_phy_registers->get_preg_comm_counter(src2) == 0) {
+                            vectorwrapper->vector_phy_registers->set_physical_reg_frl(Mem_Instruction->dyn_insn->get_physical_src2());
+                        }
+                    }
+                }
+
                 delete Mem_Instruction->dyn_insn;
                 delete Mem_Instruction;
                 this->occupied = false;
@@ -481,79 +553,6 @@ InstQueue::evaluate()
             DPRINTF(InstQueue,"Sources not ready\n");
         }
     }
-}
-
-uint64_t
-InstQueue::get_preg_rmt(uint64_t idx)
-{
-    assert((idx < RenamedRegs) || (idx==1024));
-
-    if (idx==1024) {
-        return 1024;
-    } else {
-        return physical_rmt_mem[idx];
-    }
-}
-
-void
-InstQueue::set_preg_rmt(uint64_t idx , uint64_t val)
-{
-    assert(val<PhysicalRegs);
-    assert( (idx < RenamedRegs) || (idx==1024));
-
-    physical_rmt_mem[idx] = val;
-    DPRINTF(InstQueue,"physical_rmt_mem [%d] = %d\n",idx,val);
-
-    std::stringstream texto;
-    for (int i=0; i<physical_rmt_mem.size() ; i++)
-    {
-        texto << physical_rmt_mem[i] << " ,";
-    }
-    DPRINTF(InstQueue,"physical rmt_mem %s \n",texto.str());
-}
-
-bool 
-InstQueue::physical_frl_empty()
-{
-    return (physical_frl_mem.size()==0);
-}
-
-uint64_t 
-InstQueue::get_physical_reg_frl()
-{
-    if (physical_frl_mem.size()>0) {
-        uint64_t aux;
-        aux = physical_frl_mem.front();
-        physical_frl_mem.pop_front();
-        return aux;
-        }
-    else
-    {
-        DPRINTF(VectorRename, "FRL Empty\n");
-        return 0;
-    }
-}
-
-void 
-InstQueue::set_physical_reg_frl(uint64_t reg_idx)
-{
-    assert(physical_frl_mem.size()<PhysicalRegs-1);
-    // Repeated free register is not allowed
-    for (int i=0; i<physical_frl_mem.size() ; i++)
-    {
-        assert(physical_frl_mem[i]!= reg_idx);
-    }
-
-    physical_frl_mem.push_back(reg_idx);
-    DPRINTF(InstQueue,"Pushing physical reg %d to the frl\n",reg_idx);
-
-    std::stringstream texto;
-    for (int i=0; i<physical_frl_mem.size() ; i++)
-    {
-        texto << physical_frl_mem[i] << " ,";
-    }
-    DPRINTF(InstQueue,"physical frl_mem %s \n",texto.str());
-
 }
 
 InstQueue *

@@ -51,7 +51,7 @@ public:
     VectorRename(VectorRenameParams *p);
     ~VectorRename();
 
-    const uint64_t PhysicalRegs;
+    const uint64_t RenamedRegs;
     const uint64_t LogicalRegs = 32;
 
     std::deque<uint64_t> frl_mem;
@@ -90,7 +90,7 @@ public:
 
     void set_frl(uint64_t reg_idx)
     {
-        assert(frl_mem.size()<PhysicalRegs-1);
+        assert(frl_mem.size()<RenamedRegs-1);
         
         for (int i=0; i<frl_mem.size() ; i++)
         {

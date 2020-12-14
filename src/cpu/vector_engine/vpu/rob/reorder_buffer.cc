@@ -59,7 +59,7 @@ ReorderBuffer::~ReorderBuffer()
 void
 ReorderBuffer::startTicking(VectorEngine& vector_wrapper)
 {
-    DPRINTF(ReorderBuffer,"ReorderBuffer StartTicking\n");
+    //DPRINTF(ReorderBuffer,"ReorderBuffer StartTicking\n");
     this->vectorwrapper = &vector_wrapper;
     start();
 }
@@ -107,7 +107,6 @@ ReorderBuffer::evaluate()
         {
             DPRINTF(ReorderBuffer,"Freeing up renamed old_dst %d\n",rob[head]->renamed_old_dst);
             vectorwrapper->vector_rename->set_frl(rob[head]->renamed_old_dst);
-            // REALMENTE NO TENGO QUE LIBERAR EL VIEJO... LIBERAR REGISTROS SE DEBE BASAR EN UN ALGORITMO DE REEMPLAZO
             //DPRINTF(ReorderBuffer,"Freeing up physical old_dst %d\n",rob[head]->physical_old_dst);
             //if(rob[head]->physical_old_dst != 1024) {
             //    vectorwrapper->vector_inst_queue->set_physical_reg_frl(rob[head]->physical_old_dst);

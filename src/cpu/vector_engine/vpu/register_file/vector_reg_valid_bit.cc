@@ -34,13 +34,13 @@
  * Valid bits
  */
 VectorValidBit::VectorValidBit(VectorValidBitParams *p):
-TickedObject(p),occupied(false), PhysicalRegs(p->PhysicalRegs)
+TickedObject(p),occupied(false), RenamedRegs(p->RenamedRegs)
 {
     for (uint64_t i=0; i<32; i++)
         {
             reg_valid_bit.push_back(1);
         }
-    for (uint64_t i=32; i<PhysicalRegs; i++)
+    for (uint64_t i=32; i<RenamedRegs; i++)
         {
             reg_valid_bit.push_back(0);
         }
@@ -53,7 +53,7 @@ VectorValidBit::~VectorValidBit()
 void
 VectorValidBit::set_preg_valid_bit(int idx , int val)
 {
-    assert(idx <= PhysicalRegs);
+    assert(idx <= RenamedRegs);
     DPRINTF(VectorValidBit,"Setting valid bit %d: %d\n",idx,val);
     if (Validbit_queue.size()==0) {
         startTicking();
@@ -64,7 +64,7 @@ VectorValidBit::set_preg_valid_bit(int idx , int val)
 int
 VectorValidBit::get_preg_valid_bit(int idx)
 {
-    assert((idx <= PhysicalRegs));
+    assert((idx <= RenamedRegs));
     return reg_valid_bit[idx];
 }
 

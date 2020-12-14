@@ -60,6 +60,7 @@ vector_lane(p->vector_lane),
 vector_memory_unit(p->vector_memory_unit),
 vector_inst_queue(p->vector_inst_queue),
 vector_rename(p->vector_rename),
+vector_phy_registers(p->vector_phy_registers),
 vector_reg_validbit(p->vector_reg_validbit),
 last_vtype(0),
 last_vl(0)
@@ -75,7 +76,7 @@ last_vl(0)
     DPRINTF(VectorEngineInfo,"VPU created:\n");
     DPRINTF(VectorEngineInfo,"Vector Renaming Enabled\n");
     DPRINTF(VectorEngineInfo,"Number of Physical Registers: %d \n"
-        ,vector_rename->PhysicalRegs );
+        ,vector_rename->RenamedRegs );
     DPRINTF(VectorEngineInfo,"Maximum VL: %d-bits\n"
         , vector_config->get_mvl_lmul1_bits() );
     DPRINTF(VectorEngineInfo,"Register File size: %dKB\n"
@@ -217,28 +218,29 @@ VectorEngine::printMemInst(RiscvISA::VectorStaticInst& insn,VectorDynInst *vecto
         mask_ren << "";
     }
 
-    uint32_t phy_dst = vector_dyn_insn->get_physical_dst();
-    uint32_t phy_old_dst = vector_dyn_insn->get_physical_old_dst();
-    uint32_t phy_vs2 = vector_dyn_insn->get_physical_src2();
-    uint32_t phy_vs3 = vector_dyn_insn->get_physical_src3();
-    uint32_t phy_mask = vector_dyn_insn->get_physical_mask();
+    //uint32_t phy_dst = vector_dyn_insn->get_physical_dst();
+    //uint32_t phy_old_dst = vector_dyn_insn->get_physical_old_dst();
+    //uint32_t phy_vs2 = vector_dyn_insn->get_physical_src2();
+    //uint32_t phy_vs3 = vector_dyn_insn->get_physical_src3();
+    //uint32_t phy_mask = vector_dyn_insn->get_physical_mask();
 
-    std::stringstream mask_phy;
-    if (masked_op) {
-        mask_phy << "v" << phy_mask << ".m";
-    } else {
-        mask_phy << "";
-    }
+    //std::stringstream mask_phy;
+    //if (masked_op) {
+    //    mask_phy << "v" << phy_mask << ".m";
+    //} else {
+    //    mask_phy << "";
+    //}
+
     if (insn.isLoad())
     {
         if (indexed){
             DPRINTF(VectorInst,"%s v%d v%d       PC 0x%X\n",insn.getName(),insn.vd(),insn.vs2(),*(uint64_t*)&pc);
             DPRINTF(VectorRename,"renamed inst: %s v%d v%d %s  old_dst v%d\n",insn.getName(),renamed_dst,renamed_vs2,mask_ren.str(),renamed_old_dst);
-            DPRINTF(VectorRename,"physical inst: %s v%d v%d %s  old_dst v%d\n",insn.getName(),phy_dst,phy_vs2,mask_phy.str(),phy_old_dst);
+            //DPRINTF(VectorRename,"physical inst: %s v%d v%d %s  old_dst v%d\n",insn.getName(),phy_dst,phy_vs2,mask_phy.str(),phy_old_dst);
         } else {
             DPRINTF(VectorInst,"%s v%d       PC 0x%X\n",insn.getName(),insn.vd(),*(uint64_t*)&pc);
             DPRINTF(VectorRename,"renamed inst: %s v%d %s  old_dst v%d\n",insn.getName(),renamed_dst,mask_ren.str(),renamed_old_dst);
-            DPRINTF(VectorRename,"physical inst: %s v%d %s  old_dst v%d\n",insn.getName(),phy_dst,mask_phy.str(),phy_old_dst);
+            //DPRINTF(VectorRename,"physical inst: %s v%d %s  old_dst v%d\n",insn.getName(),phy_dst,mask_phy.str(),phy_old_dst);
         }
     }
     else if (insn.isStore())
@@ -246,11 +248,11 @@ VectorEngine::printMemInst(RiscvISA::VectorStaticInst& insn,VectorDynInst *vecto
          if (indexed){
             DPRINTF(VectorInst,"%s v%d v%d       PC 0x%X\n",insn.getName(),insn.vd(),insn.vs2(),*(uint64_t*)&pc);
             DPRINTF(VectorRename,"renamed inst: %s v%d v%d %s\n",insn.getName(),renamed_vs3,renamed_vs2,mask_ren.str());
-            DPRINTF(VectorRename,"physical inst: %s v%d v%d %s\n",insn.getName(),phy_vs3,phy_vs2,mask_phy.str());
+            //DPRINTF(VectorRename,"physical inst: %s v%d v%d %s\n",insn.getName(),phy_vs3,phy_vs2,mask_phy.str());
         } else {
             DPRINTF(VectorInst,"%s v%d       PC 0x%X\n",insn.getName(),insn.vd(),*(uint64_t*)&pc );
             DPRINTF(VectorRename,"renamed inst: %s v%d %s\n",insn.getName(),renamed_vs3,mask_ren.str());
-            DPRINTF(VectorRename,"physical inst: %s v%d %s\n",insn.getName(),phy_vs3,mask_phy.str());
+            //DPRINTF(VectorRename,"physical inst: %s v%d %s\n",insn.getName(),phy_vs3,mask_phy.str());
         }
         
     } else {
@@ -285,33 +287,33 @@ VectorEngine::printArithInst(RiscvISA::VectorStaticInst& insn,VectorDynInst *vec
         mask_ren << "";
     }
 
-    uint32_t phy_dst = (insn.VectorToScalar()==1) ? insn.vd() : vector_dyn_insn->get_physical_dst();
-    uint32_t phy_old_dst = vector_dyn_insn->get_physical_old_dst();
-    uint32_t phy_vs1 = (vx_op || vf_op || vi_op) ? insn.vs1() : vector_dyn_insn->get_physical_src1();
-    uint32_t phy_vs2 = vector_dyn_insn->get_physical_src2();
-    uint32_t phy_mask = vector_dyn_insn->get_physical_mask();
+    //uint32_t phy_dst = (insn.VectorToScalar()==1) ? insn.vd() : vector_dyn_insn->get_physical_dst();
+    //uint32_t phy_old_dst = vector_dyn_insn->get_physical_old_dst();
+    //uint32_t phy_vs1 = (vx_op || vf_op || vi_op) ? insn.vs1() : vector_dyn_insn->get_physical_src1();
+    //uint32_t phy_vs2 = vector_dyn_insn->get_physical_src2();
+    //uint32_t phy_mask = vector_dyn_insn->get_physical_mask();
 
-    std::stringstream mask_phy;
-    if (masked_op) {
-        mask_phy << "v" << phy_mask << ".m";
-    } else {
-        mask_phy << "";
-    }
+    //std::stringstream mask_phy;
+    //if (masked_op) {
+    //    mask_phy << "v" << phy_mask << ".m";
+    //} else {
+    //    mask_phy << "";
+    //}
 
     if (insn.arith1Src()) {
         DPRINTF(VectorInst,"%s %s%d v%d %s           PC 0x%X\n",insn.getName(),reg_type,insn.vd(),insn.vs2(),masked,*(uint64_t*)&pc );
         DPRINTF(VectorRename,"renamed inst: %s %s%d v%d %s  old_dst v%d\n",insn.getName(),reg_type,ren_dst,renamed_vs2,mask_ren.str(),renamed_old_dst);
-        DPRINTF(VectorRename,"physical inst: %s %s%d v%d %s  old_dst v%d\n",insn.getName(),reg_type,phy_dst,phy_vs2,mask_phy.str(),phy_old_dst);
+        //DPRINTF(VectorRename,"physical inst: %s %s%d v%d %s  old_dst v%d\n",insn.getName(),reg_type,phy_dst,phy_vs2,mask_phy.str(),phy_old_dst);
     }
     else if (insn.arith2Srcs()) {
         DPRINTF(VectorInst,"%s %s%d v%d %s%d %s       PC 0x%X\n",insn.getName(),reg_type,insn.vd(),insn.vs2(),scr1_type,insn.vs1(),masked,*(uint64_t*)&pc );
         DPRINTF(VectorRename,"renamed inst: %s %s%d v%d %s%d %s  old_dst v%d\n",insn.getName(),reg_type,ren_dst,renamed_vs2,scr1_type,renamed_vs1,mask_ren.str(),renamed_old_dst);
-        DPRINTF(VectorRename,"physical inst: %s %s%d v%d %s%d %s  old_dst v%d\n",insn.getName(),reg_type,phy_dst,phy_vs2,scr1_type,phy_vs1,mask_phy.str(),phy_old_dst);
+        //DPRINTF(VectorRename,"physical inst: %s %s%d v%d %s%d %s  old_dst v%d\n",insn.getName(),reg_type,phy_dst,phy_vs2,scr1_type,phy_vs1,mask_phy.str(),phy_old_dst);
     }
     else if (insn.arith3Srcs()) {
         DPRINTF(VectorInst,"%s %s%d v%d %s%d %s       PC 0x%X\n",insn.getName(),reg_type,insn.vd(),insn.vs2(),scr1_type,insn.vs1(),masked,*(uint64_t*)&pc );
         DPRINTF(VectorRename,"renamed inst: %s %s%d v%d %s%d v%d %s old_dst v%d\n",insn.getName(),reg_type,ren_dst,renamed_vs2,scr1_type,renamed_vs1,renamed_old_dst,mask_ren.str(),renamed_old_dst);
-        DPRINTF(VectorRename,"physical inst: %s %s%d v%d %s%d v%d %s old_dst v%d\n",insn.getName(),reg_type,phy_dst,phy_vs2,scr1_type,phy_vs1,phy_old_dst,mask_phy.str(),phy_old_dst);
+        //DPRINTF(VectorRename,"physical inst: %s %s%d v%d %s%d v%d %s old_dst v%d\n",insn.getName(),reg_type,phy_dst,phy_vs2,scr1_type,phy_vs1,phy_old_dst,mask_phy.str(),phy_old_dst);
     } else {
         panic("Invalid Vector Instruction insn=%#h\n", insn.machInst);
     }
@@ -363,6 +365,23 @@ VectorEngine::renameVectorInst(RiscvISA::VectorStaticInst& insn, VectorDynInst *
             vector_rename->set_preg_rat(vd,PDst);
             /* Setting to 0 the new physical destinatio valid bit*/
             vector_reg_validbit->set_preg_valid_bit(PDst,0);
+
+            /* Commit counters used to keep track the last use of the physical registers
+             * This logic will help to swap registers between memory and the physical
+             * register bank.
+             */
+            vector_phy_registers->set_preg_comm_counter(PMask,1);
+            vector_phy_registers->set_preg_comm_counter(PDst,1);
+            //vector_phy_registers->set_preg_comm_counter(Pvs1,1);
+            vector_phy_registers->set_preg_comm_counter(Pvs2,1);
+            //vector_phy_registers->set_preg_comm_counter(Pvs3,1);
+            // Subtract should be done when executing the instruction, because in this 
+            // moment the rmt table maybe does not have the last old dst
+            //vector_phy_registers->set_preg_comm_counter(POldDst,-1);
+            /* If the old destination count is equal to zero, then we can push the old dst to the physical FRL*/
+            //if(vector_phy_registers->get_preg_comm_counter(POldDst) == 0) {
+            //    vector_phy_registers->set_physical_reg_frl(vector_phy_registers->get_preg_rmt(POldDst));
+            //}
         }
         else if (insn.isStore()) {
             /* Physical  source 2 used to hold the index values */
@@ -374,6 +393,17 @@ VectorEngine::renameVectorInst(RiscvISA::VectorStaticInst& insn, VectorDynInst *
             /* Physical  source 3 used to hold the data to store in memory */
             Pvs3 = vector_rename->get_preg_rat(vs3);
             vector_dyn_insn->set_renamed_src3(Pvs3);
+
+            /* Commit counters used to keep track the last use of the physical registers
+             * This logic will help to swap registers between memory and the physical
+             * register bank.
+             */
+            vector_phy_registers->set_preg_comm_counter(PMask,1);
+            //vector_phy_registers->set_preg_comm_counter(PDst,1);
+            //vector_phy_registers->set_preg_comm_counter(Pvs1,1);
+            vector_phy_registers->set_preg_comm_counter(Pvs2,1);
+            vector_phy_registers->set_preg_comm_counter(Pvs3,1);
+            //vector_phy_registers->set_preg_comm_counter(POldDst,-1);
         }
     }
     else if (insn.isVectorInstArith()) {
@@ -392,10 +422,17 @@ VectorEngine::renameVectorInst(RiscvISA::VectorStaticInst& insn, VectorDynInst *
         /* When the instruction use an scalar value as source 1, the physical source 1 is disable
          * When the instruction uses only 1 source (insn.arith1Src()), the  source 1 is disable
          */
+        Pvs1 = 1024;
         if( !(vx_op || vf_op || vi_op) && !insn.arith1Src()) {
              /* Physical source 1 */
             Pvs1 = vector_rename->get_preg_rat(vs1);
             vector_dyn_insn->set_renamed_src1(Pvs1);
+        }
+        Pvs3 = 1024;
+        if(insn.arith3Srcs()) {
+             /* Physical source 1 */
+            Pvs3 = vector_rename->get_preg_rat(vs3);
+            vector_dyn_insn->set_renamed_src3(Pvs3);
         }
         /* dst_write_ena is set when the instruction has a vector destination register */
         if(dst_write_ena) {
@@ -404,6 +441,22 @@ VectorEngine::renameVectorInst(RiscvISA::VectorStaticInst& insn, VectorDynInst *
             /* Setting to 0 the new physical destinatio valid bit*/
             vector_reg_validbit->set_preg_valid_bit(PDst,0);
         }
+        /* Commit counters used to keep track the last use of the physical registers
+         * This logic will help to swap registers between memory and the physical
+         * register bank.
+         */
+        vector_phy_registers->set_preg_comm_counter(PMask,1);
+        vector_phy_registers->set_preg_comm_counter(PDst,1);
+        vector_phy_registers->set_preg_comm_counter(Pvs1,1);
+        vector_phy_registers->set_preg_comm_counter(Pvs2,1);
+        vector_phy_registers->set_preg_comm_counter(Pvs3,1);
+        // Subtract should be done when executing the instruction, because in this 
+        // moment the rmt table maybe does not have the last old dst
+        //vector_phy_registers->set_preg_comm_counter(POldDst,-1);
+        /* If the old destination count is equal to zero, then we can push the old dst to the physical FRL*/
+        //if(vector_phy_registers->get_preg_comm_counter(POldDst) == 0) {
+        //    vector_phy_registers->set_physical_reg_frl(vector_phy_registers->get_preg_rmt(POldDst));
+        //}
     } else {
             panic("Invalid Vector Instruction insn=%#h\n", insn.machInst);
     }
@@ -419,7 +472,7 @@ VectorEngine::dispatch(RiscvISA::VectorStaticInst& insn, ExecContextPtr& xc,
         dependencie_callback();
         printConfigInst(insn,src1,src2);
         VectorConfigIns++;
-        DPRINTF(VectorEngine,"Settig vl %d , sew %d , lmul %d\n",last_vl,vector_config->get_vtype_sew(last_vtype),vector_config->get_vtype_lmul(last_vtype));
+        //DPRINTF(VectorEngine,"Settig vl %d , sew %d , lmul %d\n",last_vl,vector_config->get_vtype_sew(last_vtype),vector_config->get_vtype_lmul(last_vtype));
         return;
     }
 
@@ -432,7 +485,7 @@ VectorEngine::dispatch(RiscvISA::VectorStaticInst& insn, ExecContextPtr& xc,
         panic("LMUL>1 is not suported \n");
     }
 
-    DPRINTF(VectorInst,"src1 %d, src2 %d\n",src1,src2);
+    //DPRINTF(VectorInst,"src1 %d, src2 %d\n",src1,src2);
 
     /* Be sure that the instruction was added to some group in base.isa */
     if (insn.isVectorInstArith()) {
@@ -463,7 +516,7 @@ VectorEngine::dispatch(RiscvISA::VectorStaticInst& insn, ExecContextPtr& xc,
             new InstQueue::QueueEntry(insn,vector_dyn_insn,xc,
                 NULL,src1,src2,last_vtype,last_vl));
         DPRINTF(InstQueue,"Mem Queue Size %d\n",vector_inst_queue->Memory_Queue.size());
-        //printMemInst(insn,vector_dyn_insn);
+        printMemInst(insn,vector_dyn_insn);
     }
     else if (insn.isVectorInstArith()) {
         if (dst_write_ena) {
@@ -482,7 +535,7 @@ VectorEngine::dispatch(RiscvISA::VectorStaticInst& insn, ExecContextPtr& xc,
                 dependencie_callback,src1,src2,last_vtype,last_vl));
         }
         DPRINTF(InstQueue,"Arith Queue Size %d\n",vector_inst_queue->Instruction_Queue.size());
-        //printArithInst(insn,vector_dyn_insn,src1);
+        printArithInst(insn,vector_dyn_insn,src1);
     } else {
         panic("Invalid Vector Instruction, insn=%X\n", insn.machInst);
     }

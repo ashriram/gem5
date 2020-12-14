@@ -219,13 +219,17 @@ system.cpu.ve_interface = VectorEngineInterface(
             vector_arith_queue_size = options.arith_queue_size
         ),
         vector_rename = VectorRename(
-            PhysicalRegs = options.VRF_physical_regs
+            RenamedRegs = options.VRF_physical_regs
+        ),
+        vector_phy_registers = VectorPhyRegisters(
+            RenamedRegs = options.VRF_physical_regs,
+            PhysicalRegs = 16
         ),
         vector_rob = ReorderBuffer(
             ROB_Size = options.rob_size
         ),
         vector_reg_validbit = VectorValidBit(
-            PhysicalRegs = options.VRF_physical_regs
+            RenamedRegs = options.VRF_physical_regs
         ),
         vector_memory_unit = VectorMemUnit(
             memReader = MemUnitReadTiming(

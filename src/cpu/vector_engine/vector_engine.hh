@@ -53,6 +53,7 @@
 #include "cpu/vector_engine/vpu/multilane_wrapper/vector_lane.hh"
 #include "cpu/vector_engine/vpu/register_file/vector_reg.hh"
 #include "cpu/vector_engine/vpu/register_file/vector_reg_valid_bit.hh"
+#include "cpu/vector_engine/vpu/rename/vector_phy_registers.hh"
 #include "cpu/vector_engine/vpu/rename/vector_rename.hh"
 #include "cpu/vector_engine/vpu/rob/reorder_buffer.hh"
 #include "mem/request.hh"
@@ -238,6 +239,7 @@ public:
     VectorMemUnit *   vector_memory_unit;
     InstQueue     *   vector_inst_queue;
     VectorRename  *   vector_rename;
+    VectorPhyRegisters * vector_phy_registers;
     VectorValidBit *  vector_reg_validbit;
 
 public:

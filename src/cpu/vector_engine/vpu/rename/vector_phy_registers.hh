@@ -28,36 +28,59 @@
  * Author: Cristóbal Ramírez
  */
 
-#include "cpu/vector_engine/vpu/rename/vector_rename.hh"
+ #ifndef __CPU_VECTOR_PHY_REGS_H__
+#define __CPU_VECTOR_PHY_REGS_H__
 
 #include <bitset>
 #include <cstdint>
 #include <deque>
 #include <functional>
 
-#include "debug/VectorEngineInfo.hh"
+#include "arch/riscv/insts/vector_static_inst.hh"
+#include "cpu/vector_engine/vector_dyn_inst.hh"
+#include "debug/VectorPhyRegisters.hh"
+#include "params/VectorPhyRegisters.hh"
+#include "sim/faults.hh"
+#include "sim/sim_object.hh"
 
 /**
- *  Vector Renaming
+ *  Vector Physical Registers
  */
-VectorRename::VectorRename(VectorRenameParams *p) :
-SimObject(p), RenamedRegs(p->RenamedRegs)
+class VectorPhyRegisters : public SimObject
 {
-    DPRINTF(VectorRename, "Created the Renaming Unit object \n");
-    for (uint64_t i=32; i<RenamedRegs; i++) {
-            frl_mem.push_back(i);
-        }
-    for (uint64_t i=0; i<LogicalRegs; i++) {
-            rat_mem[i]=i;
-        }
-}
+public:
+    VectorPhyRegisters(VectorPhyRegistersParams *p);
+    ~VectorPhyRegisters();
 
-VectorRename::~VectorRename()
-{
-}
+    const uint64_t RenamedRegs;
+    const uint64_t PhysicalRegs;
 
-VectorRename *
-VectorRenameParams::create()
-{
-    return new VectorRename(this);
-}
+    int get_preg_comm_counter(int idx);
+    void set_preg_comm_counter(int idx , int val);
+    void print_commit_counters();
+
+    /* Functions for the new register allocation */
+    uint64_t get_preg_rmt(uint64_t idx);
+    void set_preg_rmt(uint64_t idx , uint64_t val);
+    bool physical_frl_empty();
+    uint64_t get_physical_reg_frl();
+    void set_physical_reg_frl(uint64_t reg_idx);
+
+    /* Print functions */
+    void printMemPhyInst(RiscvISA::VectorStaticInst& insn,VectorDynInst *vector_dyn_insn);
+    void printArithPhyInst(RiscvISA::VectorStaticInst& insn,VectorDynInst *vector_dyn_insn);
+
+private:
+    /* Commit counters*/
+    std::vector<int> commit_counters;
+
+    std::deque<uint64_t> physical_rmt_mem;
+    std::deque<uint64_t> physical_frl_mem;
+
+};
+
+
+
+#endif // __CPU_VECTOR_PHY_REGS_H__
+
+

@@ -34,4 +34,4 @@ class VectorRename(SimObject):
     type = 'VectorRename'
     cxx_header = "cpu/vector_engine/vpu/rename/vector_rename.hh"
 
-    PhysicalRegs = Param.Unsigned("Number of Vector Physical Registers")
+    RenamedRegs  = Param.Unsigned("Number of Vector Renamed Registers")

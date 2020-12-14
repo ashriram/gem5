@@ -34,4 +34,4 @@ class VectorValidBit(TickedObject):
     type = 'VectorValidBit'
     cxx_header = "cpu/vector_engine/vpu/register_file/vector_reg_valid_bit.hh"
 
-    PhysicalRegs = Param.Unsigned("Number of Vector Physical Registers")
+    RenamedRegs = Param.Unsigned("Number of Vector Physical Registers")

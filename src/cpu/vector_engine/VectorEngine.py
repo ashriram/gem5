@@ -52,6 +52,7 @@ class VectorEngine(SimObject):
     vector_memory_unit = Param.VectorMemUnit("Vector Memory Unit ")
     vector_inst_queue = Param.InstQueue("Vector Instruction Queue")
     vector_rename = Param.VectorRename("Vector Renaming unit")
+    vector_phy_registers = Param.VectorPhyRegisters("Vector Physical Registers unit")
     vector_reg_validbit = Param.VectorValidBit("Vector Validbit unit")
 
     system = Param.System(Parent.any, "system object")

@@ -26,17 +26,13 @@
 #
 # Author: Cristóbal Ramírez
 
-Import('*')
+from m5.params import *
 
-if not env['BUILD_VECTOR_ENGINE']:
-    Return()
+from m5.SimObject import SimObject
 
-SimObject('VectorRename.py')
-SimObject('VectorPhyRegisters.py')
+class VectorPhyRegisters(SimObject):
+    type = 'VectorPhyRegisters'
+    cxx_header = "cpu/vector_engine/vpu/rename/vector_phy_registers.hh"
 
-Source('vector_rename.cc')
-Source('vector_phy_registers.cc')
-
-DebugFlag('VectorRename')
-DebugFlag('VectorPhyRegisters')
-
+    RenamedRegs  = Param.Unsigned("Number of Vector Renamed Registers")
+    PhysicalRegs = Param.Unsigned("Number of Vector Physical Registers")
