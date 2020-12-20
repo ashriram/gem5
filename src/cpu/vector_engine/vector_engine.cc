@@ -42,6 +42,7 @@
 #include "debug/VectorEngine.hh"
 #include "debug/VectorEngineInfo.hh"
 #include "debug/VectorInst.hh"
+#include "debug/VectorInstRenamed.hh"
 #include "debug/InstQueue.hh"
 #include "sim/faults.hh"
 #include "sim/sim_object.hh"
@@ -102,7 +103,6 @@ last_vl(0)
 VectorEngine::~VectorEngine()
 {
 }
-
 
 void
 VectorEngine::regStats()
@@ -197,6 +197,8 @@ VectorEngine::printConfigInst(RiscvISA::VectorStaticInst& insn, uint64_t src1,ui
 {
     uint64_t pc = insn.getPC();
     DPRINTF(VectorInst,"%s vl:%d, vtype:%d       PC 0x%X\n",insn.getName(),src1,src2,*(uint64_t*)&pc );
+    DPRINTF(VectorInstRenamed,"%s vl:%d, vtype:%d\n",insn.getName(),src1,src2);
+    
 }
 
 void
@@ -235,24 +237,24 @@ VectorEngine::printMemInst(RiscvISA::VectorStaticInst& insn,VectorDynInst *vecto
     {
         if (indexed){
             DPRINTF(VectorInst,"%s v%d v%d       PC 0x%X\n",insn.getName(),insn.vd(),insn.vs2(),*(uint64_t*)&pc);
-            DPRINTF(VectorRename,"renamed inst: %s v%d v%d %s  old_dst v%d\n",insn.getName(),renamed_dst,renamed_vs2,mask_ren.str(),renamed_old_dst);
-            //DPRINTF(VectorRename,"physical inst: %s v%d v%d %s  old_dst v%d\n",insn.getName(),phy_dst,phy_vs2,mask_phy.str(),phy_old_dst);
+            DPRINTF(VectorInstRenamed,"%s v%d v%d %s  old_dst v%d\n",insn.getName(),renamed_dst,renamed_vs2,mask_ren.str(),renamed_old_dst);
+            //DPRINTF(VectorInstRenamed,"physical inst: %s v%d v%d %s  old_dst v%d\n",insn.getName(),phy_dst,phy_vs2,mask_phy.str(),phy_old_dst);
         } else {
             DPRINTF(VectorInst,"%s v%d       PC 0x%X\n",insn.getName(),insn.vd(),*(uint64_t*)&pc);
-            DPRINTF(VectorRename,"renamed inst: %s v%d %s  old_dst v%d\n",insn.getName(),renamed_dst,mask_ren.str(),renamed_old_dst);
-            //DPRINTF(VectorRename,"physical inst: %s v%d %s  old_dst v%d\n",insn.getName(),phy_dst,mask_phy.str(),phy_old_dst);
+            DPRINTF(VectorInstRenamed,"%s v%d %s  old_dst v%d\n",insn.getName(),renamed_dst,mask_ren.str(),renamed_old_dst);
+            //DPRINTF(VectorInstRenamed,"physical inst: %s v%d %s  old_dst v%d\n",insn.getName(),phy_dst,mask_phy.str(),phy_old_dst);
         }
     }
     else if (insn.isStore())
     {
          if (indexed){
             DPRINTF(VectorInst,"%s v%d v%d       PC 0x%X\n",insn.getName(),insn.vd(),insn.vs2(),*(uint64_t*)&pc);
-            DPRINTF(VectorRename,"renamed inst: %s v%d v%d %s\n",insn.getName(),renamed_vs3,renamed_vs2,mask_ren.str());
-            //DPRINTF(VectorRename,"physical inst: %s v%d v%d %s\n",insn.getName(),phy_vs3,phy_vs2,mask_phy.str());
+            DPRINTF(VectorInstRenamed,"%s v%d v%d %s\n",insn.getName(),renamed_vs3,renamed_vs2,mask_ren.str());
+            //DPRINTF(VectorInstRenamed,"physical inst: %s v%d v%d %s\n",insn.getName(),phy_vs3,phy_vs2,mask_phy.str());
         } else {
             DPRINTF(VectorInst,"%s v%d       PC 0x%X\n",insn.getName(),insn.vd(),*(uint64_t*)&pc );
-            DPRINTF(VectorRename,"renamed inst: %s v%d %s\n",insn.getName(),renamed_vs3,mask_ren.str());
-            //DPRINTF(VectorRename,"physical inst: %s v%d %s\n",insn.getName(),phy_vs3,mask_phy.str());
+            DPRINTF(VectorInstRenamed,"%s v%d %s\n",insn.getName(),renamed_vs3,mask_ren.str());
+            //DPRINTF(VectorInstRenamed,"physical inst: %s v%d %s\n",insn.getName(),phy_vs3,mask_phy.str());
         }
         
     } else {
@@ -302,18 +304,18 @@ VectorEngine::printArithInst(RiscvISA::VectorStaticInst& insn,VectorDynInst *vec
 
     if (insn.arith1Src()) {
         DPRINTF(VectorInst,"%s %s%d v%d %s           PC 0x%X\n",insn.getName(),reg_type,insn.vd(),insn.vs2(),masked,*(uint64_t*)&pc );
-        DPRINTF(VectorRename,"renamed inst: %s %s%d v%d %s  old_dst v%d\n",insn.getName(),reg_type,ren_dst,renamed_vs2,mask_ren.str(),renamed_old_dst);
-        //DPRINTF(VectorRename,"physical inst: %s %s%d v%d %s  old_dst v%d\n",insn.getName(),reg_type,phy_dst,phy_vs2,mask_phy.str(),phy_old_dst);
+        DPRINTF(VectorInstRenamed,"%s %s%d v%d %s  old_dst v%d\n",insn.getName(),reg_type,ren_dst,renamed_vs2,mask_ren.str(),renamed_old_dst);
+        //DPRINTF(VectorInstRenamed,"physical inst: %s %s%d v%d %s  old_dst v%d\n",insn.getName(),reg_type,phy_dst,phy_vs2,mask_phy.str(),phy_old_dst);
     }
     else if (insn.arith2Srcs()) {
         DPRINTF(VectorInst,"%s %s%d v%d %s%d %s       PC 0x%X\n",insn.getName(),reg_type,insn.vd(),insn.vs2(),scr1_type,insn.vs1(),masked,*(uint64_t*)&pc );
-        DPRINTF(VectorRename,"renamed inst: %s %s%d v%d %s%d %s  old_dst v%d\n",insn.getName(),reg_type,ren_dst,renamed_vs2,scr1_type,renamed_vs1,mask_ren.str(),renamed_old_dst);
-        //DPRINTF(VectorRename,"physical inst: %s %s%d v%d %s%d %s  old_dst v%d\n",insn.getName(),reg_type,phy_dst,phy_vs2,scr1_type,phy_vs1,mask_phy.str(),phy_old_dst);
+        DPRINTF(VectorInstRenamed,"%s %s%d v%d %s%d %s  old_dst v%d\n",insn.getName(),reg_type,ren_dst,renamed_vs2,scr1_type,renamed_vs1,mask_ren.str(),renamed_old_dst);
+        //DPRINTF(VectorInstRenamed,"physical inst: %s %s%d v%d %s%d %s  old_dst v%d\n",insn.getName(),reg_type,phy_dst,phy_vs2,scr1_type,phy_vs1,mask_phy.str(),phy_old_dst);
     }
     else if (insn.arith3Srcs()) {
         DPRINTF(VectorInst,"%s %s%d v%d %s%d %s       PC 0x%X\n",insn.getName(),reg_type,insn.vd(),insn.vs2(),scr1_type,insn.vs1(),masked,*(uint64_t*)&pc );
-        DPRINTF(VectorRename,"renamed inst: %s %s%d v%d %s%d v%d %s old_dst v%d\n",insn.getName(),reg_type,ren_dst,renamed_vs2,scr1_type,renamed_vs1,renamed_old_dst,mask_ren.str(),renamed_old_dst);
-        //DPRINTF(VectorRename,"physical inst: %s %s%d v%d %s%d v%d %s old_dst v%d\n",insn.getName(),reg_type,phy_dst,phy_vs2,scr1_type,phy_vs1,phy_old_dst,mask_phy.str(),phy_old_dst);
+        DPRINTF(VectorInstRenamed,"%s %s%d v%d %s%d v%d %s old_dst v%d\n",insn.getName(),reg_type,ren_dst,renamed_vs2,scr1_type,renamed_vs1,renamed_old_dst,mask_ren.str(),renamed_old_dst);
+        //DPRINTF(VectorInstRenamed,"physical inst: %s %s%d v%d %s%d v%d %s old_dst v%d\n",insn.getName(),reg_type,phy_dst,phy_vs2,scr1_type,phy_vs1,phy_old_dst,mask_phy.str(),phy_old_dst);
     } else {
         panic("Invalid Vector Instruction insn=%#h\n", insn.machInst);
     }

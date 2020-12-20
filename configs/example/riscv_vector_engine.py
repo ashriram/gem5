@@ -69,7 +69,7 @@ ps.add_option('--cpu_clk',          type="string", default='2GHz',
                                     help="Speed of all CPUs")
 
 # VECTOR REGISTER OPTIONS
-ps.add_option('--VRF_physical_regs',type="int", default=40,
+ps.add_option('--renamed_regs',     type="int", default=40,
                                     help="Number of Vector Physical Registers")
 ps.add_option('--VRF_line_size',    type="int", default=64,
                                     help="Vector Register line size in Bytes")
@@ -198,16 +198,17 @@ if( (connect_to_l2) or (connect_to_dram)):
 # VECTOR EXTESION CONFIG
 ###############################################################################
 #mvl_lmul = options.max_vl * 8;
+physical_registers = 16
 
 system.cpu.ve_interface = VectorEngineInterface(
     vector_engine = VectorEngine(
         vector_rf_ports = vector_rf_ports,
         vector_config = VectorConfig(
-            max_vl = options.max_vl
+            max_vl = options.max_vl * (options.renamed_regs/physical_registers)
         ),
         vector_reg = VectorRegister(
             lanes_per_access = options.v_lanes/options.num_clusters,
-            size = (options.VRF_physical_regs * options.max_vl)/8,
+            size = (options.renamed_regs * options.max_vl)/8,
             lineSize =options.VRF_line_size
                         *(options.v_lanes/options.num_clusters),
             numPorts = vector_rf_ports,
@@ -219,17 +220,17 @@ system.cpu.ve_interface = VectorEngineInterface(
             vector_arith_queue_size = options.arith_queue_size
         ),
         vector_rename = VectorRename(
-            RenamedRegs = options.VRF_physical_regs
+            RenamedRegs = options.renamed_regs
         ),
         vector_phy_registers = VectorPhyRegisters(
-            RenamedRegs = options.VRF_physical_regs,
-            PhysicalRegs = 16
+            RenamedRegs = options.renamed_regs,
+            PhysicalRegs = physical_registers
         ),
         vector_rob = ReorderBuffer(
             ROB_Size = options.rob_size
         ),
         vector_reg_validbit = VectorValidBit(
-            RenamedRegs = options.VRF_physical_regs
+            RenamedRegs = options.renamed_regs
         ),
         vector_memory_unit = VectorMemUnit(
             memReader = MemUnitReadTiming(

@@ -75,7 +75,7 @@ gem5.opt $GEM5/configs/example/riscv_vector_engine.py --cmd="$APPS/_blackscholes
 Running an specific configuration:
 ```
 echo > output_vector.txt
-gem5.opt $GEM5/configs/example/riscv_vector_engine.py --cmd="$APPS/_blackscholes/bin/blackscholes_vector 1 $APPS/_blackscholes/input/in_256.input output_vector.txt" --v_lanes=8  --max_vl=16384 --l2_size=1024kB --VRF_physical_regs=64 --OoO_queues=1  --mem_queue_size=16 --arith_queue_size=16 --rob_size=32
+gem5.opt $GEM5/configs/example/riscv_vector_engine.py --cmd="$APPS/_blackscholes/bin/blackscholes_vector 1 $APPS/_blackscholes/input/in_256.input output_vector.txt" --v_lanes=8  --max_vl=16384 --l2_size=1024kB --renamed_regs=64 --OoO_queues=1  --mem_queue_size=16 --arith_queue_size=16 --rob_size=32
 ```
 
 It is possible to take advantage of the customization provided by the parametrized-based vector
