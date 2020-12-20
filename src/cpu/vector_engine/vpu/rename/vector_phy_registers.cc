@@ -36,6 +36,7 @@
 #include <functional>
 
 #include "debug/VectorPhyRegisters.hh"
+#include "debug/VectorInstPhy.hh"
 
 /**
  *  Vector Renaming
@@ -167,17 +168,17 @@ VectorPhyRegisters::printMemPhyInst(RiscvISA::VectorStaticInst& insn,VectorDynIn
     if (insn.isLoad())
     {
         if (indexed){
-            DPRINTF(VectorPhyRegisters,"physical inst: %s v%d v%d %s  old_dst v%d\n",insn.getName(),phy_dst,phy_vs2,mask_phy.str(),phy_old_dst);
+            DPRINTF(VectorInstPhy,"%s v%d v%d %s  old_dst v%d\n",insn.getName(),phy_dst,phy_vs2,mask_phy.str(),phy_old_dst);
         } else {
-            DPRINTF(VectorPhyRegisters,"physical inst: %s v%d %s  old_dst v%d\n",insn.getName(),phy_dst,mask_phy.str(),phy_old_dst);
+            DPRINTF(VectorInstPhy,"%s v%d %s  old_dst v%d\n",insn.getName(),phy_dst,mask_phy.str(),phy_old_dst);
         }
     }
     else if (insn.isStore())
     {
          if (indexed){
-            DPRINTF(VectorPhyRegisters,"physical inst: %s v%d v%d %s\n",insn.getName(),phy_vs3,phy_vs2,mask_phy.str());
+            DPRINTF(VectorInstPhy,"%s v%d v%d %s\n",insn.getName(),phy_vs3,phy_vs2,mask_phy.str());
         } else {
-            DPRINTF(VectorPhyRegisters,"physical inst: %s v%d %s\n",insn.getName(),phy_vs3,mask_phy.str());
+            DPRINTF(VectorInstPhy,"%s v%d %s\n",insn.getName(),phy_vs3,mask_phy.str());
         }
         
     } else {
@@ -217,13 +218,18 @@ VectorPhyRegisters::printArithPhyInst(RiscvISA::VectorStaticInst& insn,VectorDyn
     }
 
     if (insn.arith1Src()) {
-        DPRINTF(VectorPhyRegisters,"physical inst: %s %s%d v%d %s  old_dst v%d\n",insn.getName(),reg_type,phy_dst,phy_vs2,mask_phy.str(),phy_old_dst);
+        DPRINTF(VectorInstPhy,"%s %s%d v%d %s  old_dst v%d\n",insn.getName(),reg_type,phy_dst,phy_vs2,mask_phy.str(),phy_old_dst);
     }
     else if (insn.arith2Srcs()) {
-        DPRINTF(VectorPhyRegisters,"physical inst: %s %s%d v%d %s%d %s  old_dst v%d\n",insn.getName(),reg_type,phy_dst,phy_vs2,scr1_type,phy_vs1,mask_phy.str(),phy_old_dst);
+         if(insn.is_vmv())
+        {
+            DPRINTF(VectorInstPhy,"%s %s%d %s%d %s  old_dst v%d\n",insn.getName(),reg_type,phy_dst,scr1_type,phy_vs1,mask_phy.str(),phy_old_dst);
+        } else {
+            DPRINTF(VectorInstPhy,"%s %s%d v%d %s%d %s  old_dst v%d\n",insn.getName(),reg_type,phy_dst,phy_vs2,scr1_type,phy_vs1,mask_phy.str(),phy_old_dst);
+        }
     }
     else if (insn.arith3Srcs()) {
-        DPRINTF(VectorPhyRegisters,"physical inst: %s %s%d v%d %s%d v%d %s old_dst v%d\n",insn.getName(),reg_type,phy_dst,phy_vs2,scr1_type,phy_vs1,phy_old_dst,mask_phy.str(),phy_old_dst);
+        DPRINTF(VectorInstPhy,"%s %s%d v%d %s%d v%d %s old_dst v%d\n",insn.getName(),reg_type,phy_dst,phy_vs2,scr1_type,phy_vs1,phy_old_dst,mask_phy.str(),phy_old_dst);
     } else {
         panic("Invalid Vector Instruction insn=%#h\n", insn.machInst);
     }

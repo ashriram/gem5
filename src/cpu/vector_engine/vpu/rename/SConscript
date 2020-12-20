@@ -39,4 +39,5 @@ Source('vector_phy_registers.cc')
 
 DebugFlag('VectorRename')
 DebugFlag('VectorPhyRegisters')
+DebugFlag('VectorInstPhy')
 
