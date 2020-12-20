@@ -124,6 +124,8 @@ Datapath::startTicking(
     arith1Src     = this->insn->arith1Src();
     arith2Srcs    = this->insn->arith2Srcs();
     arith3Srcs    = this->insn->arith3Srcs();
+
+    vmv_op        = this->insn->is_vmv();
     /* Conversion between Int<->FP */
     is_INT_to_FP    = this->insn->isConvertIntToFP();
     is_FP_to_INT    = this->insn->isConvertFPToInt();
@@ -223,9 +225,11 @@ Datapath::evaluate()
     }
     else if (arith2Srcs)  // 2 sources operation
     {
-        //DPRINTF(VectorEngine," arith2Srcs \n" );
-        if ( (vector_lane->AdataQ.size() < simd_size) |
-            (vector_lane->BdataQ.size() < simd_size) )
+        if(vector_lane->AdataQ.size() < simd_size) {
+            return;
+        }
+        
+        if (!vmv_op && (vector_lane->BdataQ.size() < simd_size) )
         {
             return;
         }
@@ -291,12 +295,15 @@ Datapath::evaluate()
         }
 
         /*
-         * Src2 is always ised by the arithmetic instructions
+         * Src2 is disable when vmv operation
          */
-        uint8_t *Bitem = vector_lane->BdataQ.front();
-        memcpy(Bdata+(i*DATA_SIZE), Bitem, DATA_SIZE);
-        vector_lane->BdataQ.pop_front();
-        delete[] Bitem;
+        if(!vmv_op)
+        {
+            uint8_t *Bitem = vector_lane->BdataQ.front();
+            memcpy(Bdata+(i*DATA_SIZE), Bitem, DATA_SIZE);
+            vector_lane->BdataQ.pop_front();
+            delete[] Bitem;
+        }
 
         /*
          * Mask register used by the instruction

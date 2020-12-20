@@ -198,7 +198,7 @@ if( (connect_to_l2) or (connect_to_dram)):
 # VECTOR EXTESION CONFIG
 ###############################################################################
 #mvl_lmul = options.max_vl * 8;
-physical_registers = 16
+physical_registers = 8
 
 system.cpu.ve_interface = VectorEngineInterface(
     vector_engine = VectorEngine(

@@ -137,6 +137,7 @@ InstQueue::evaluate()
         bool vf_op=0;
         bool vi_op=0;
         bool scalar_op=0;
+        bool vmv_op=0;
         bool mask_ready=0;
         bool src1_ready=0;
         bool src2_ready=0;
@@ -167,6 +168,7 @@ InstQueue::evaluate()
             vf_op = (Instruction->insn.func3()==5);
             vi_op = (Instruction->insn.func3()==3);
             scalar_op = vx_op || vf_op || vi_op;
+            vmv_op = Instruction->insn.is_vmv();
 
             if (masked_op) {
                 mask_ready = vectorwrapper->vector_reg_validbit->
@@ -184,9 +186,9 @@ InstQueue::evaluate()
                 src1_ready =1;
             }
 
-            if (Instruction->insn.arith1Src() ||
+            if ((Instruction->insn.arith1Src() ||
                 Instruction->insn.arith2Srcs() ||
-                Instruction->insn.arith3Srcs()){
+                Instruction->insn.arith3Srcs()) && !vmv_op){
                 src2_ready = vectorwrapper->vector_reg_validbit->
                     get_preg_valid_bit(src2);
             } else {
@@ -278,7 +280,7 @@ InstQueue::evaluate()
             vectorwrapper->issue(Instruction->insn,Instruction->dyn_insn,
                 Instruction->xc,Instruction->src1,Instruction->src2,
                 Instruction->rename_vtype,Instruction->rename_vl,
-                [Instruction,masked_op,scalar_op,src1,src2,src3,mask,this]
+                [Instruction,masked_op,scalar_op,vmv_op,src1,src2,src3,mask,this]
                 (Fault f) {
                 // Setting the Valid Bit
                 bool wb_enable = !Instruction->insn.VectorToScalar();
@@ -318,7 +320,7 @@ InstQueue::evaluate()
                     }
                 }
                 if (Instruction->insn.arith1Src() ||
-                    Instruction->insn.arith2Srcs() ||
+                    (Instruction->insn.arith2Srcs() && !vmv_op) ||
                     Instruction->insn.arith3Srcs()){
                     /* Decrease -1 second source */
                     vectorwrapper->vector_phy_registers->set_preg_comm_counter(src2,-1);

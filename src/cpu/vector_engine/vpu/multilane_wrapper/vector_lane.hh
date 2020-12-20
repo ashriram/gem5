@@ -99,6 +99,7 @@ class VectorLane : public SimObject
     bool vx_op;
     bool vf_op;
     bool vi_op;
+    bool vmv_op;
 };
 
 #endif // __CPU_VECTOR_EXE_UNIT_HH__

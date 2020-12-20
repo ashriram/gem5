@@ -147,7 +147,7 @@ private:
     bool arith1Src;
     bool arith2Srcs;
     bool arith3Srcs;
-
+    bool vmv_op;
     bool op_imm;
         // Masked Operation
     bool vm;

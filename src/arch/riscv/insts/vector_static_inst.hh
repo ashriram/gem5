@@ -122,7 +122,8 @@ public:
       virtual bool is_slideup() const = 0;
       virtual bool is_slidedown() const = 0;
       virtual bool is_slide() const = 0;
-
+      /* vector move */
+      virtual bool is_vmv() const = 0;
       /* vtype field*/
       virtual uint32_t vtype() const = 0;
       /* func3 field*/
@@ -191,6 +192,11 @@ class RiscvVectorInsn : public VectorStaticInst
   bool isInt()               const  override   { return ((func3()==0) || (func3()==2) || (func3()==3) || (func3()==4) || (func3()==6)) && !is_slide(); }
   bool isConvert()           const override { return isConvertIntToFP() || isConvertFPToInt(); }
   bool is_slide()            const override { return is_slideup() || is_slidedown() ; }
+
+  bool is_vmv()              const override { return ((getName() == "vmerge_vv") ||
+                                                      (getName() == "vmerge_vi") ||
+                                                      (getName() == "vmerge_vx") ||
+                                                      (getName() == "vfmerge_vf")) && (vm()==1); }
 
   bool VectorToScalar()      const override { return opClass() == VectorToScalarOp; }
 

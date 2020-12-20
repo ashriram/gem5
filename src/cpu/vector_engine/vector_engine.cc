@@ -308,9 +308,15 @@ VectorEngine::printArithInst(RiscvISA::VectorStaticInst& insn,VectorDynInst *vec
         //DPRINTF(VectorInstRenamed,"physical inst: %s %s%d v%d %s  old_dst v%d\n",insn.getName(),reg_type,phy_dst,phy_vs2,mask_phy.str(),phy_old_dst);
     }
     else if (insn.arith2Srcs()) {
-        DPRINTF(VectorInst,"%s %s%d v%d %s%d %s       PC 0x%X\n",insn.getName(),reg_type,insn.vd(),insn.vs2(),scr1_type,insn.vs1(),masked,*(uint64_t*)&pc );
-        DPRINTF(VectorInstRenamed,"%s %s%d v%d %s%d %s  old_dst v%d\n",insn.getName(),reg_type,ren_dst,renamed_vs2,scr1_type,renamed_vs1,mask_ren.str(),renamed_old_dst);
-        //DPRINTF(VectorInstRenamed,"physical inst: %s %s%d v%d %s%d %s  old_dst v%d\n",insn.getName(),reg_type,phy_dst,phy_vs2,scr1_type,phy_vs1,mask_phy.str(),phy_old_dst);
+        if(insn.is_vmv())
+        {
+            DPRINTF(VectorInst,"%s %s%d %s%d %s       PC 0x%X\n",insn.getName(),reg_type,insn.vd(),scr1_type,insn.vs1(),masked,*(uint64_t*)&pc );
+            DPRINTF(VectorInstRenamed,"%s %s%d %s%d %s  old_dst v%d\n",insn.getName(),reg_type,ren_dst,scr1_type,renamed_vs1,mask_ren.str(),renamed_old_dst);
+        } else {
+            DPRINTF(VectorInst,"%s %s%d v%d %s%d %s       PC 0x%X\n",insn.getName(),reg_type,insn.vd(),insn.vs2(),scr1_type,insn.vs1(),masked,*(uint64_t*)&pc );
+            DPRINTF(VectorInstRenamed,"%s %s%d v%d %s%d %s  old_dst v%d\n",insn.getName(),reg_type,ren_dst,renamed_vs2,scr1_type,renamed_vs1,mask_ren.str(),renamed_old_dst);
+            //DPRINTF(VectorInstRenamed,"physical inst: %s %s%d v%d %s%d %s  old_dst v%d\n",insn.getName(),reg_type,phy_dst,phy_vs2,scr1_type,phy_vs1,mask_phy.str(),phy_old_dst);
+        }
     }
     else if (insn.arith3Srcs()) {
         DPRINTF(VectorInst,"%s %s%d v%d %s%d %s       PC 0x%X\n",insn.getName(),reg_type,insn.vd(),insn.vs2(),scr1_type,insn.vs1(),masked,*(uint64_t*)&pc );
@@ -419,7 +425,9 @@ VectorEngine::renameVectorInst(RiscvISA::VectorStaticInst& insn, VectorDynInst *
         POldDst = (dst_write_ena) ? vector_rename->get_preg_rat(vd) : 1024;
         vector_dyn_insn->set_renamed_old_dst(POldDst);
         /* Physical source 2 */
-        Pvs2 = vector_rename->get_preg_rat(vs2);
+        /* For unmasked (vm=1) vmerge and vfmerge the vs2 is not used*/
+        bool src2_valid = !insn.is_vmv();
+        Pvs2 = src2_valid ? vector_rename->get_preg_rat(vs2):1024;
         vector_dyn_insn->set_renamed_src2(Pvs2);
         /* When the instruction use an scalar value as source 1, the physical source 1 is disable
          * When the instruction uses only 1 source (insn.arith1Src()), the  source 1 is disable

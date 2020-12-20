@@ -105,6 +105,8 @@ VectorLane::issue(VectorEngine& vector_wrapper,
     vx_op = (insn.func3()==4) || (insn.func3()==6);
     vf_op = (insn.func3()==5);
     vi_op = (insn.func3()==3);
+    /*vector move operations*/
+    vmv_op=insn.is_vmv();
     // Masked operation
     masked_op = (insn.vm()==0);
     /*Mask destination. Two instructions types creates a mask: isFPCompare()  isIntCompare()*/
@@ -371,24 +373,27 @@ VectorLane::issue(VectorEngine& vector_wrapper,
                 addr_src2;
         }
 
-        srcBReader->initialize(vector_wrapper,vl_count, DATA_SIZE, addr_src2,0,1,
-            location, xc, [DATA_SIZE,vl_count,this]
-            (uint8_t*data, uint8_t size, bool done)
+        if(!vmv_op)
         {
-            assert(size == DATA_SIZE);
-            uint8_t *ndata = new uint8_t[DATA_SIZE];
-            memcpy(ndata, data, DATA_SIZE);
-            this->BdataQ.push_back(ndata);
-            if (DATA_SIZE==8){ DPRINTF(VectorLane,"queue Data srcBReader "
-                "0x%x , queue_size = %d \n" , *(uint64_t *) ndata ,
-                this->BdataQ.size());}
-            if (DATA_SIZE==4){ DPRINTF(VectorLane,"queue Data srcBReader "
-                "0x%x , queue_size = %d \n" , *(uint32_t *) ndata ,
-                this->BdataQ.size());}
-            ++this->Bread;
-            delete data;
-            assert(!done || (this->Bread == vl_count));
-        });
+            srcBReader->initialize(vector_wrapper,vl_count, DATA_SIZE, addr_src2,0,1,
+                location, xc, [DATA_SIZE,vl_count,this]
+                (uint8_t*data, uint8_t size, bool done)
+            {
+                assert(size == DATA_SIZE);
+                uint8_t *ndata = new uint8_t[DATA_SIZE];
+                memcpy(ndata, data, DATA_SIZE);
+                this->BdataQ.push_back(ndata);
+                if (DATA_SIZE==8){ DPRINTF(VectorLane,"queue Data srcBReader "
+                    "0x%x , queue_size = %d \n" , *(uint64_t *) ndata ,
+                    this->BdataQ.size());}
+                if (DATA_SIZE==4){ DPRINTF(VectorLane,"queue Data srcBReader "
+                    "0x%x , queue_size = %d \n" , *(uint32_t *) ndata ,
+                    this->BdataQ.size());}
+                ++this->Bread;
+                delete data;
+                assert(!done || (this->Bread == vl_count));
+            });
+        }
 
         if (masked_op)
         {
